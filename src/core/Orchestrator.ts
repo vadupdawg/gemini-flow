@@ -85,37 +85,64 @@ export class Orchestrator {
         console.error(`[Orchestrator] Task failed for agent ${step.agent}:`, executionResult.error);
         return;
       }
+      
+      try {
+        const result = JSON.parse(executionResult.output);
 
-      const result = executionResult.output;
+        if (step.outputKey) {
+          if (!result.success) {
+            console.log(`[Orchestrator] Agent ${step.agent} reported failure. Not saving to memory.`);
+            return;
+          }
 
-      if (step.outputKey) {
-        const strategy = step.memoryUpdateStrategy || 'overwrite';
-        const existingValue = this.memory.get(step.outputKey);
-        let newValue = result;
+          let valueToStore;
+          if (result.type === 'file') {
+            valueToStore = `File created at: ${result.path}`;
+          } else {
+            valueToStore = result.content;
+          }
 
-        switch (strategy) {
-          case 'append':
-            newValue = existingValue ? `${existingValue}\n\n---\n\n${result}` : result;
-            break;
-          case 'merge':
-            try {
-              const existingJson = existingValue ? JSON.parse(existingValue) : {};
-              const newJson = JSON.parse(result);
-              newValue = JSON.stringify({ ...existingJson, ...newJson }, null, 2);
-            } catch (e) {
-              console.error(`[Orchestrator] Merge failed for key '${step.outputKey}'. Defaulting to append.`);
-              newValue = existingValue ? `${existingValue}\n\n---\n\n${result}` : result;
-            }
-            break;
-          case 'overwrite':
-          default:
-            break;
+          const strategy = step.memoryUpdateStrategy || 'overwrite';
+          const existingValue = this.memory.get(step.outputKey);
+          let newValue = valueToStore;
+
+          switch (strategy) {
+            case 'append':
+              newValue = existingValue ? `${existingValue}
+
+---
+
+${valueToStore}` : valueToStore;
+              break;
+            case 'merge':
+              // Merging doesn't make as much sense with this new structure,
+              // but we'll keep a basic version.
+              try {
+                const existingJson = existingValue ? JSON.parse(existingValue) : {};
+                const newJson = JSON.parse(valueToStore);
+                newValue = JSON.stringify({ ...existingJson, ...newJson }, null, 2);
+              } catch (e) {
+                console.error(`[Orchestrator] Merge failed for key '${step.outputKey}'. Defaulting to append.`);
+                newValue = existingValue ? `${existingValue}
+
+---
+
+${valueToStore}` : valueToStore;
+              }
+              break;
+            case 'overwrite':
+            default:
+              break;
+          }
+          
+          this.memory.set(step.outputKey, newValue);
+          console.log(`[Orchestrator] Agent ${step.agent} saved output to memory key '${step.outputKey}' using strategy '${strategy}'`);
+        } else if (result.success && result.content) {
+          console.log(result.content);
         }
-
-        this.memory.set(step.outputKey, newValue);
-        console.log(`[Orchestrator] Agent ${step.agent} saved output to memory key '${step.outputKey}' using strategy '${strategy}'`);
-      } else {
-        console.log(result);
+      } catch (e) {
+        // Handle cases where the output is not JSON (e.g., from older prompts)
+        console.log(`[Orchestrator] Raw output from agent ${step.agent}: ${executionResult.output}`);
       }
     };
 
