@@ -26,9 +26,9 @@ export const swarmCommand: CommandModule = {
 
     Logger.log('[Swarm]', `Goal received: "${argv.goal}"`);
 
-    const orchestrator = new Orchestrator(apiKey);
-    const executor = new Executor();
     const toDoManager = new ToDoManager();
+    const orchestrator = new Orchestrator(apiKey, toDoManager);
+    const executor = new Executor();
 
     // Define all possible agents in the swarm
     const agents = [

@@ -15,13 +15,13 @@ export class Orchestrator {
   private toDoManager: ToDoManager;
   private tools: { [name: string]: Tool };
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, toDoManager?: ToDoManager) {
     this.apiKey = apiKey;
     this.rl = readline.createInterface({
       input: process.stdin,
       output: process.stdout,
     });
-    this.toDoManager = new ToDoManager();
+    this.toDoManager = toDoManager || new ToDoManager();
     this.tools = getTools(this.toDoManager);
   }
 
