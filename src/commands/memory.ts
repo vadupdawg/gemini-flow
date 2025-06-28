@@ -1,6 +1,6 @@
-
 import { Command } from 'commander';
 import { Memory } from '../core/Memory';
+import { Logger } from '../core/Logger';
 
 export const memoryCommand = () => {
   const command = new Command('memory')
@@ -12,7 +12,7 @@ export const memoryCommand = () => {
     .action((key, value) => {
       const memory = new Memory();
       memory.set(key, value);
-      console.log(`Set '${key}' to '${value}'`);
+      Logger.log('[Memory]', `Set '${key}' to '${value}'`);
     });
 
   command
@@ -22,9 +22,9 @@ export const memoryCommand = () => {
       const memory = new Memory();
       const value = memory.get(key);
       if (value !== undefined) {
-        console.log(value);
+        console.log(value); // Direct output is desired here
       } else {
-        console.log(`Key '${key}' not found in memory.`);
+        Logger.warn('[Memory]', `Key '${key}' not found in memory.`);
       }
     });
 
@@ -34,7 +34,7 @@ export const memoryCommand = () => {
     .action(() => {
       const memory = new Memory();
       const allMemory = memory.getAll();
-      console.log(Object.keys(allMemory));
+      console.log(Object.keys(allMemory)); // Direct output is desired here
     });
 
   return command;

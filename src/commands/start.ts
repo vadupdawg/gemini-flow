@@ -1,6 +1,6 @@
-
 import { Command } from 'commander';
 import express from 'express';
+import { Logger } from '../core/Logger';
 
 export const startCommand = () => {
   const command = new Command('start')
@@ -15,7 +15,7 @@ export const startCommand = () => {
       });
 
       app.listen(port, () => {
-        console.log(`Gemini Flow UI listening on port ${port}`);
+        Logger.log('[WebUI]', `Gemini Flow UI listening on http://localhost:${port}`);
       });
     });
 
