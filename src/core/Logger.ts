@@ -1,24 +1,28 @@
 import chalk from 'chalk';
 
 export class Logger {
-  static log(prefix: string, message: string) {
-    console.log(`${chalk.blue.bold(prefix)} ${message}`);
+  static log(source: string, message: string) {
+    console.log(`${chalk.blue.bold(source)} ${message}`);
   }
 
-  static success(prefix: string, message: string) {
-    console.log(`${chalk.green.bold(prefix)} ${message}`);
+  static success(source: string, message: string) {
+    console.log(`${chalk.green.bold(source)} ${chalk.green(message)}`);
   }
 
-  static error(prefix: string, message: string) {
-    console.error(`${chalk.red.bold(prefix)} ${message}`);
+  static warn(source: string, message: string) {
+    console.warn(`${chalk.yellow.bold(source)} ${chalk.yellow(message)}`);
   }
 
-  static warn(prefix: string, message: string) {
-    console.warn(`${chalk.yellow.bold(prefix)} ${message}`);
+  static error(source: string, message: string) {
+    console.error(`${chalk.red.bold(source)} ${chalk.red(message)}`);
   }
 
-  static security(prefix: string, command: string, confirmationPrompt: string) {
-    console.log(`\n${chalk.red.bold(prefix)} Agent wants to execute the following command:\n\n  ${chalk.cyan(command)}\n`);
-    return `${chalk.red.bold(prefix)} ${confirmationPrompt}`;
+  static security(source: string, command: string, prompt: string) {
+    return `${chalk.magenta.bold(source)} Command: "${chalk.cyan(command)}". ${prompt}`;
+  }
+
+  static raw(source: string, message: string) {
+    console.log(`${chalk.gray.bold(source)}
+${chalk.gray(message)}`);
   }
 }

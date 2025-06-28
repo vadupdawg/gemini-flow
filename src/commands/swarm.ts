@@ -60,8 +60,18 @@ export const swarmCommand: CommandModule = {
     }
 
     try {
+      const rawOutput = planResult.output;
+      
+      // Find the first '{' and the last '}' to isolate the main JSON object.
+      const firstBrace = rawOutput.indexOf('{');
+      const lastBrace = rawOutput.lastIndexOf('}');
+      if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+        throw new Error("Could not find a valid JSON object in the executor's output.");
+      }
+      const jsonShellString = rawOutput.substring(firstBrace, lastBrace + 1);
+      
       // First, parse the outer JSON shell from the executor
-      const executorResponse = JSON.parse(planResult.output);
+      const executorResponse = JSON.parse(jsonShellString);
       const agentContent = executorResponse.content;
 
       let planJsonString: string | null = null;

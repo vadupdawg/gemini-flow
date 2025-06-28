@@ -136,7 +136,10 @@ export class Orchestrator {
         continue;
       }
 
-      Logger.log(`[Agent: ${agentName}]`, `Raw output:\n---\n${executionResult.output}\n---`);
+      Logger.raw(`[Agent: ${agentName}]`, `Raw output:
+---
+${executionResult.output}
+---`);
 
       try {
         const result = JSON.parse(executionResult.output);
