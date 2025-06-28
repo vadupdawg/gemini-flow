@@ -60,17 +60,27 @@ export const swarmCommand: CommandModule = {
     }
 
     try {
-      const agentOutput = JSON.parse(planResult.output);
-      const content = agentOutput.content;
+      const rawOutput = planResult.output;
+      let planJsonString: string | null = null;
 
-      // Use a regex to reliably extract the JSON block
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-
-      if (!jsonMatch || !jsonMatch[1]) {
-        throw new Error("Could not find a valid JSON block in the agent's output.");
+      // First, try to find a markdown JSON block. This is the most reliable method.
+      const markdownMatch = rawOutput.match(/```(json)?\s*([\s\S]+?)\s*```/);
+      if (markdownMatch && markdownMatch[2]) {
+        planJsonString = markdownMatch[2];
+      } else {
+        // If no markdown block, fall back to finding the first and last brackets.
+        const firstBracket = rawOutput.indexOf('[');
+        const lastBracket = rawOutput.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket > firstBracket) {
+          planJsonString = rawOutput.substring(firstBracket, lastBracket + 1);
+        }
       }
 
-      const plan = JSON.parse(jsonMatch[1]);
+      if (!planJsonString) {
+        throw new Error("Could not find a valid JSON plan in the agent's output.");
+      }
+
+      const plan = JSON.parse(planJsonString);
 
       Logger.success('[Swarm]', 'Plan generated successfully.');
 
