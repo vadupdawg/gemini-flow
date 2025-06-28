@@ -95,18 +95,16 @@ export class Orchestrator {
     return result;
   }
 
-  async run(initialPrompt: string) {
+  async run(initialPrompt: string, initialAgent: string = 'coder') {
     // Initial task for the planner
-    this.toDoManager.addTask(initialPrompt);
+    this.toDoManager.addTask(initialPrompt, initialAgent);
 
     let nextTask = this.toDoManager.getNextTask();
     while (nextTask) {
       const currentTask = nextTask;
       this.toDoManager.updateTaskStatus(currentTask.id, 'in_progress');
 
-      // For now, we'll use a generic 'coder' agent for all tasks.
-      // In the future, we could have a routing mechanism.
-      const agentName = 'coder'; 
+      const agentName = currentTask.agent;
       const agent = this.getAgent(agentName);
       if (!agent) {
         Logger.error(`[Orchestrator]`, `Agent ${agentName} not found.`);

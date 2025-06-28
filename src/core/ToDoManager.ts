@@ -4,6 +4,7 @@ import * as path from 'path';
 export interface ToDoItem {
   id: number;
   task: string;
+  agent: string; // The agent assigned to this task
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   dependencies: number[];
   result?: any;
@@ -35,11 +36,12 @@ export class ToDoManager {
     return this.todos;
   }
 
-  addTask(task: string, dependencies: number[] = []): ToDoItem {
+  addTask(task: string, agent: string, dependencies: number[] = []): ToDoItem {
     const newId = this.todos.length > 0 ? Math.max(...this.todos.map(t => t.id)) + 1 : 1;
     const newTask: ToDoItem = {
       id: newId,
       task,
+      agent,
       status: 'pending',
       dependencies,
     };

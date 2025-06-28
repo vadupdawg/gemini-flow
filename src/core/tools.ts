@@ -52,8 +52,8 @@ export class AddToDoTool implements Tool {
     
     constructor(private toDoManager: ToDoManager) {}
 
-    async execute(args: { task: string; dependencies?: number[] }): Promise<any> {
-        const newToDo = this.toDoManager.addTask(args.task, args.dependencies);
+    async execute(args: { task: string; agent: string; dependencies?: number[] }): Promise<any> {
+        const newToDo = this.toDoManager.addTask(args.task, args.agent, args.dependencies);
         return { success: true, todo: newToDo };
     }
 }
