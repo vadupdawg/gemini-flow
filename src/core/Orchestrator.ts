@@ -3,6 +3,7 @@ import { Memory } from './Memory';
 import { Executor } from './executor';
 import * as fs from 'fs';
 import * as path from 'path';
+import { tools } from './tools';
 
 export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
 
@@ -61,7 +62,11 @@ export class Orchestrator {
       inputs[key] = this.memory.get(key);
     }
 
-    return `${task}\n\n## Context from Memory\n\n${JSON.stringify(inputs, null, 2)}`;
+    return `${task}
+
+## Context from Memory
+
+${JSON.stringify(inputs, null, 2)}`;
   }
 
   async runWorkflow(workflow: WorkflowStep[], parallel = false) {
@@ -99,6 +104,16 @@ ${executionResult.output}
 
       try {
         const result = JSON.parse(executionResult.output);
+
+        if (result.tool && tools[result.tool]) {
+          const tool = tools[result.tool];
+          const toolResult = await tool.execute(result.args);
+          console.log(`[Orchestrator] Agent ${step.agent} used tool '${result.tool}'. Result:`, toolResult);
+          if (step.outputKey) {
+            this.memory.set(step.outputKey, toolResult);
+          }
+          return;
+        }
 
         if (step.outputKey) {
           if (!result.success) {

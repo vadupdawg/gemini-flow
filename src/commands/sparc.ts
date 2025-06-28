@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { Orchestrator, WorkflowStep } from '../core/Orchestrator';
-import { Agent } from '../core/Agent';
 import * as dotenv from 'dotenv';
 
 dotenv.config();
@@ -19,22 +18,32 @@ export const sparcCommand = () => {
       const orchestrator = new Orchestrator(apiKey);
 
       // Create agents
-      orchestrator.addAgent('architect', 'architect');
       orchestrator.addAgent('coder', 'coder');
+      orchestrator.addAgent('documenter', 'documenter');
 
       // Define a memory-driven workflow
       const workflow: WorkflowStep[] = [
         {
-          agent: 'architect',
-          task: 'Design a REST API for a simple e-commerce application. The output should be a JSON object representing the API design.',
-          outputKey: 'api_design'
+          agent: 'coder',
+          task: 'Generate Python code for a moving average crossover trading strategy. The output should be a JSON object with a "content" field containing the code.',
+          outputKey: 'algorithm_code'
         },
         {
-          agent: 'coder',
-          task: 'Based on the provided API design, implement the user endpoint in Node.js with Express.',
-          inputKey: 'api_design',
-          outputKey: 'user_endpoint_code'
+          agent: 'documenter',
+          task: 'Based on the provided Python code, create detailed documentation in Markdown format. The output should be a JSON object with a "content" field containing the documentation.',
+          inputKey: 'algorithm_code',
+          outputKey: 'algorithm_documentation'
         },
+        {
+            agent: 'coder',
+            task: 'Save the generated Python code to a file named "trading_algorithm.py" in a new "output" directory. Use the writeFile tool.',
+            inputKey: 'algorithm_code',
+        },
+        {
+            agent: 'coder',
+            task: 'Save the generated documentation to a file named "trading_algorithm.md" in the "output" directory. Use the writeFile tool.',
+            inputKey: 'algorithm_documentation',
+        }
       ];
 
       // Run the workflow
