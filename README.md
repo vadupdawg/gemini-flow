@@ -1,6 +1,17 @@
 # Gemini Flow 🚀
 
-A powerful AI orchestration framework powered by Google's Gemini AI. Gemini Flow enables multi-agent coordination, task automation, and intelligent development workflows through a comprehensive CLI interface.
+**A hobby project exploring the power of Gemini AI and Claude Code**
+
+> ⚠️ **Disclaimer**: This project is heavily inspired by and based on [Claude Flow](https://github.com/anthropics/claude-flow). It's a personal experiment to test the capabilities of Google's Gemini AI using similar patterns and concepts. This is NOT an official project and should be viewed as a learning exercise and tribute to the excellent work done on Claude Flow.
+
+## About This Project
+
+Gemini Flow is an experimental port of Claude Flow's concepts to work with Google's Gemini AI. It demonstrates how powerful AI orchestration patterns can be adapted across different AI providers. This project exists to:
+
+- Test Gemini AI's capabilities in multi-agent scenarios
+- Explore AI orchestration patterns
+- Learn from and appreciate the architecture of Claude Flow
+- Provide a playground for experimenting with AI-driven development workflows
 
 ## 🌟 Features
 
@@ -263,11 +274,20 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## 🙏 Acknowledgments & Credits
 
-- Powered by Google's Gemini AI
-- Inspired by modern AI orchestration patterns
-- Built with TypeScript and Node.js
+### This project wouldn't exist without:
+
+- **[Claude Flow](https://github.com/anthropics/claude-flow)** - The original implementation and inspiration for this entire project. Most concepts, commands, and architecture patterns are directly adapted from Claude Flow.
+- **[Claude Code](https://claude.ai/code)** - Used to help port and adapt the concepts to work with Gemini AI
+- **Google's Gemini AI** - The AI engine powering this experimental version
+- **The open source community** - For making projects like this possible
+
+### Important Note
+
+This is a **hobby project** created to explore and learn. If you're looking for a production-ready AI orchestration tool, please check out the original [Claude Flow](https://github.com/anthropics/claude-flow). 
+
+The goal here is purely educational: to understand how AI orchestration works and to test if similar patterns can work across different AI providers. All credit for the innovative concepts goes to the Claude Flow team.
 
 ## 🐛 Troubleshooting
 
@@ -286,10 +306,11 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📞 Support
 
-- Create an issue on [GitHub](https://github.com/vadupdawg/gemini-flow/issues)
-- Check existing issues for solutions
-- Join our community discussions
+Since this is a hobby project:
+- Feel free to create issues, but please understand this is maintained in spare time
+- PRs and contributions are welcome if you want to experiment
+- For production use cases, consider using [Claude Flow](https://github.com/anthropics/claude-flow) instead
 
 ---
 
-Built with ❤️ by the Gemini Flow team
+An experimental project built with ❤️ to explore AI orchestration patterns
