@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 import { tools } from './tools';
+import { Logger } from './Logger';
 
 export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
 
@@ -33,17 +34,10 @@ export class Orchestrator {
 
   private async confirmExecution(command: string): Promise<boolean> {
     return new Promise((resolve) => {
-      this.rl.question(
-        `
-[SECURITY] Agent wants to execute the following command:
-
-  ${command}
-
-Do you want to allow this? (y/n): `,
-        (answer) => {
-          resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
-        }
-      );
+      const prompt = Logger.security('[SECURITY]', command, 'Do you want to allow this? (y/n): ');
+      this.rl.question(prompt, (answer) => {
+        resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+      });
     });
   }
 
@@ -68,7 +62,7 @@ Do you want to allow this? (y/n): `,
       return fs.readFileSync(templatePath, 'utf-8');
     }
 
-    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found. Using a default.`);
+    Logger.warn(`[Orchestrator]`, `System prompt for mode '${mode}' not found. Using a default.`);
     return `You are a helpful assistant with the role: ${mode}.`;
   }
 
@@ -78,7 +72,7 @@ Do you want to allow this? (y/n): `,
     }
 
     const inputs: { [key: string]: any } = {};
-    const keys = Array.isArray(inputKeys) ? keys : [inputKeys];
+    const keys = Array.isArray(inputKeys) ? inputKeys : [inputKeys];
 
     for (const key of keys) {
       inputs[key] = this.memory.get(key);
@@ -93,33 +87,29 @@ ${JSON.stringify(inputs, null, 2)}`;
 
   async runWorkflow(workflow: WorkflowStep[], parallel = false) {
     const runStep = async (step: WorkflowStep) => {
-      const agent = this.getAgent(step.agent);
+      const agentName = step.agent;
+      const agent = this.getAgent(agentName);
       if (!agent) {
-        console.error(`[Orchestrator] Agent ${step.agent} not found.`);
+        Logger.error(`[Orchestrator]`, `Agent ${agentName} not found.`);
         return;
       }
 
       const taskWithContext = this.buildTaskWithContext(step.task, step.inputKey);
       const systemPrompt = this.getSystemPrompt(agent.mode);
 
+      Logger.log(`[Agent: ${agentName}]`, `Starting task...`);
       const executionResult = await this.executor.run({
         task: taskWithContext,
         systemPrompt,
         apiKey: this.apiKey,
       });
 
-      if (!executionResult.success) {
-        console.error(`[Orchestrator] Task failed for agent ${step.agent}:`, executionResult.error);
-        return;
-      }
-      
-      if (executionResult.error) {
-        console.error(`[Orchestrator] Error executing task for agent ${step.agent}: ${executionResult.error}`);
+      if (!executionResult.success || executionResult.error) {
+        Logger.error(`[Agent: ${agentName}]`, `Task failed: ${executionResult.error}`);
         return;
       }
 
-      // DEBUG: Log raw agent output
-      console.log(`[Orchestrator] Raw output from agent ${step.agent}:
+      Logger.log(`[Agent: ${agentName}]`, `Raw output:
 ---
 ${executionResult.output}
 ---`);
@@ -133,73 +123,37 @@ ${executionResult.output}
           if (tool.name === 'runShellCommand') {
             const allowed = await this.confirmExecution(result.args.command);
             if (!allowed) {
-              console.log(`[Orchestrator] Execution of command denied by user. Skipping step.`);
+              Logger.warn(`[Orchestrator]`, `Execution of command denied by user. Skipping step.`);
               return;
             }
           }
 
           const toolResult = await tool.execute(result.args);
-          console.log(`[Orchestrator] Agent ${step.agent} used tool '${result.tool}'. Result:`, toolResult);
+          Logger.success(`[Agent: ${agentName}]`, `Used tool '${result.tool}'.`);
           if (step.outputKey) {
             this.memory.set(step.outputKey, toolResult);
+            Logger.log(`[Memory]`, `Saved tool output to key '${step.outputKey}'.`);
           }
           return;
         }
 
         if (step.outputKey) {
           if (!result.success) {
-            console.log(`[Orchestrator] Agent ${step.agent} reported failure. Not saving to memory.`);
+            Logger.warn(`[Agent: ${agentName}]`, `Reported failure. Not saving to memory.`);
             return;
           }
 
-          let valueToStore;
-          if (result.type === 'file') {
-            valueToStore = `File created at: ${result.path}`;
-          } else {
-            valueToStore = result.content;
-          }
-
-          const strategy = step.memoryUpdateStrategy || 'overwrite';
-          const existingValue = this.memory.get(step.outputKey);
-          let newValue = valueToStore;
-
-          switch (strategy) {
-            case 'append':
-              newValue = existingValue ? `${existingValue}
-
----
-
-${valueToStore}` : valueToStore;
-              break;
-            case 'merge':
-              try {
-                const existingJson = existingValue ? JSON.parse(existingValue) : {};
-                const newJson = JSON.parse(valueToStore);
-                newValue = JSON.stringify({ ...existingJson, ...newJson }, null, 2);
-              } catch (e) {
-                console.error(`[Orchestrator] Merge failed for key '${step.outputKey}'. Defaulting to append.`);
-                newValue = existingValue ? `${existingValue}
-
----
-
-${valueToStore}` : valueToStore;
-              }
-              break;
-            case 'overwrite':
-            default:
-              break;
-          }
-          
-          this.memory.set(step.outputKey, newValue);
-          console.log(`[Orchestrator] Agent ${step.agent} saved output to memory key '${step.outputKey}' using strategy '${strategy}'`);
+          const valueToStore = result.content;
+          this.memory.set(step.outputKey, valueToStore);
+          Logger.log(`[Memory]`, `Saved output to key '${step.outputKey}'.`);
         } else if (result.success && result.content) {
-          console.log(result.content);
+          Logger.log(`[Agent: ${agentName}]`, `Result: ${result.content}`);
         }
       } catch (e) {
-        console.log(`[Orchestrator] Agent ${step.agent} output was not valid JSON. Treating as raw text.`);
+        Logger.warn(`[Agent: ${agentName}]`, `Output was not valid JSON. Treating as raw text.`);
         if (step.outputKey) {
           this.memory.set(step.outputKey, executionResult.output);
-          console.log(`[Orchestrator] Agent ${step.agent} saved raw output to memory key '${step.outputKey}'`);
+          Logger.log(`[Memory]`, `Saved raw output to key '${step.outputKey}'.`);
         } else {
           console.log(executionResult.output);
         }
