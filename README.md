@@ -2,7 +2,7 @@
 
 **A hobby project exploring the power of Gemini AI and Claude Code**
 
-> ⚠️ **Disclaimer**: This project is heavily inspired by and based on [Claude Flow](https://github.com/anthropics/claude-code-flow). It's a personal experiment to test the capabilities of Google's Gemini AI using similar patterns and concepts. This is NOT an official project and should be viewed as a learning exercise and tribute to the excellent work done on Claude Flow.
+> ⚠️ **Disclaimer**: This project is heavily inspired by and based on [Claude Flow](https://github.com/ruvnet/claude-code-flow). It's a personal experiment to test the capabilities of Google's Gemini AI using similar patterns and concepts. This is NOT an official project and should be viewed as a learning exercise and tribute to the excellent work done on Claude Flow.
 
 ## About This Project
 
