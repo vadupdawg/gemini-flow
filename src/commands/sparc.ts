@@ -16,11 +16,11 @@ export const sparcCommand = () => {
         return;
       }
 
-      const orchestrator = new Orchestrator();
+      const orchestrator = new Orchestrator(apiKey);
 
-      // Create agents with the API key
-      orchestrator.addAgent(new Agent('architect', 'architecture', apiKey));
-      orchestrator.addAgent(new Agent('coder', 'coding', apiKey));
+      // Create agents
+      orchestrator.addAgent('architect', 'architect');
+      orchestrator.addAgent('coder', 'coder');
 
       // Define a memory-driven workflow
       const workflow: WorkflowStep[] = [

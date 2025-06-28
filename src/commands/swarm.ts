@@ -46,13 +46,13 @@ export const swarmCommand = () => {
 
       // 2. Execute the generated workflow
       console.log('\n[Swarm] Executing the generated plan...');
-      const orchestrator = new Orchestrator();
+      const orchestrator = new Orchestrator(apiKey);
       
       // Dynamically add all required agents to the orchestrator
       const requiredAgents = [...new Set(workflow.map(step => step.agent))];
       for (const agentName of requiredAgents) {
         // We assume the mode is the same as the agent name for simplicity
-        orchestrator.addAgent(new Agent(agentName, agentName, apiKey));
+        orchestrator.addAgent(agentName, agentName);
       }
 
       await orchestrator.runWorkflow(workflow);

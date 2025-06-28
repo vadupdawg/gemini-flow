@@ -15,15 +15,22 @@ export interface WorkflowStep {
 }
 
 export class Orchestrator {
-  private agents: Agent[] = [];
+  private agents: { [name: string]: Agent } = {};
   private memory = new Memory();
+  private apiKey: string;
 
-  addAgent(agent: Agent) {
-    this.agents.push(agent);
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  addAgent(name: string, mode: string) {
+    if (!this.agents[name]) {
+      this.agents[name] = new Agent(name, mode, this.apiKey);
+    }
   }
 
   getAgent(name: string): Agent | undefined {
-    return this.agents.find(agent => agent.name === name);
+    return this.agents[name];
   }
 
   private getSystemPrompt(mode: string): string | undefined {
@@ -31,6 +38,12 @@ export class Orchestrator {
     if (fs.existsSync(promptPath)) {
       return fs.readFileSync(promptPath, 'utf-8');
     }
+    // Also check the templates directory
+    const templatePath = path.join(__dirname, '..', 'templates', 'prompts', 'modes', `${mode}.md`);
+    if (fs.existsSync(templatePath)) {
+      return fs.readFileSync(templatePath, 'utf-8');
+    }
+    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found.`);
     return undefined;
   }
 
@@ -38,6 +51,7 @@ export class Orchestrator {
     if (!inputKeys) {
       return task;
     }
+
 
     const inputs: { [key: string]: any } = {};
     const keys = Array.isArray(inputKeys) ? inputKeys : [inputKeys];

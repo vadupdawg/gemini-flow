@@ -4,8 +4,12 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export class Agent {
   private genAI: GoogleGenerativeAI;
+  public name: string;
+  public mode: string;
 
-  constructor(public name: string, public mode: string, apiKey: string) {
+  constructor(name: string, mode: string, apiKey: string) {
+    this.name = name;
+    this.mode = mode;
     this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
@@ -14,9 +18,14 @@ export class Agent {
 
     const fullPrompt = `${systemPrompt}\n\n## Task\n\n${task}`;
 
-    const result = await model.generateContent(fullPrompt);
-    const response = await result.response;
-    return response.text();
+    try {
+      const result = await model.generateContent(fullPrompt);
+      const response = await result.response;
+      return response.text();
+    } catch (error) {
+      console.error(`[Agent: ${this.name}] Error during API call:`, error);
+      return `Error: Could not generate content. Please check your API key and network connection.`;
+    }
   }
 }
 
