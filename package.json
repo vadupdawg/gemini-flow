@@ -1,0 +1,33 @@
+{
+  "name": "gemini-flow",
+  "version": "1.0.0",
+  "description": "Gemini Flow: AI Agent Orchestration Platform",
+  "main": "dist/index.js",
+  "bin": {
+    "gemini-flow": "dist/index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "gemini",
+    "ai",
+    "agent",
+    "orchestration"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.7",
+    "commander": "^14.0.0",
+    "dotenv": "^17.0.0",
+    "express": "^5.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
