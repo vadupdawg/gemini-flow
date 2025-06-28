@@ -1,20 +1,68 @@
 # Dependencies
-/node_modules
-
-# Build output
-/dist
-
-# Test configuration
-jest.config.js
-
-# Environment variables
-.env
-
-# Memory
-.gemini/memory.json
-todo.json
-
-# Logs
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Build output
+dist/
+build/
+*.js.map
+
+# Test configuration - keep this in repo
+# jest.config.js
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Testing
+coverage/
+.nyc_output
+
+# Memory and data - ignore contents but keep structure
+memory/data/
+memory/backups/
+memory/archive/
+memory/index/
+.gemini/memory.json
+todo.json
+
+# Analysis files - temporary
+.gemini/analysis/
+.claude/
+gap-analysis-report.json
+improvement-roadmap.md
+technical-recommendations.md
+FEATURE-GAP-SUMMARY.md
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Optional - keep local config
+config.local.json

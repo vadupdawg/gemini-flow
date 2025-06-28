@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Gemini Flow local wrapper
+# This script ensures gemini-flow runs from your project directory
+
+# Save the current directory
+PROJECT_DIR="${PWD}"
+
+# Set environment to ensure correct working directory
+export PWD="${PROJECT_DIR}"
+export GEMINI_WORKING_DIR="${PROJECT_DIR}"
+
+# First, check if there's a local built version
+if [ -f "${PROJECT_DIR}/dist/index.js" ]; then
+  cd "${PROJECT_DIR}"
+  exec node "${PROJECT_DIR}/dist/index.js" "$@"
+
+# Check local node_modules
+elif [ -f "${PROJECT_DIR}/node_modules/.bin/gemini-flow" ]; then
+  cd "${PROJECT_DIR}"
+  exec "${PROJECT_DIR}/node_modules/.bin/gemini-flow" "$@"
+
+# Check global installation
+elif command -v gemini-flow &> /dev/null; then
+  cd "${PROJECT_DIR}"
+  exec gemini-flow "$@"
+
+# Fallback to running with ts-node
+else
+  cd "${PROJECT_DIR}"
+  exec npx ts-node "${PROJECT_DIR}/src/index.ts" "$@"
+fi
