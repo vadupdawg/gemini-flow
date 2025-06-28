@@ -8,6 +8,7 @@ import { tools } from './tools';
 import { Logger } from './Logger';
 
 export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
+export type OnErrorStrategy = 'stop' | 'continue';
 
 export interface WorkflowStep {
   agent: string;
@@ -15,6 +16,7 @@ export interface WorkflowStep {
   inputKey?: string | string[];
   outputKey?: string;
   memoryUpdateStrategy?: MemoryUpdateStrategy;
+  onError?: OnErrorStrategy;
 }
 
 export class Orchestrator {
@@ -86,12 +88,12 @@ ${JSON.stringify(inputs, null, 2)}`;
   }
 
   async runWorkflow(workflow: WorkflowStep[], parallel = false) {
-    const runStep = async (step: WorkflowStep) => {
+    const runStep = async (step: WorkflowStep): Promise<boolean> => {
       const agentName = step.agent;
       const agent = this.getAgent(agentName);
       if (!agent) {
         Logger.error(`[Orchestrator]`, `Agent ${agentName} not found.`);
-        return;
+        return false;
       }
 
       const taskWithContext = this.buildTaskWithContext(step.task, step.inputKey);
@@ -106,7 +108,7 @@ ${JSON.stringify(inputs, null, 2)}`;
 
       if (!executionResult.success || executionResult.error) {
         Logger.error(`[Agent: ${agentName}]`, `Task failed: ${executionResult.error}`);
-        return;
+        return false;
       }
 
       Logger.log(`[Agent: ${agentName}]`, `Raw output:
@@ -124,23 +126,28 @@ ${executionResult.output}
             const allowed = await this.confirmExecution(result.args.command);
             if (!allowed) {
               Logger.warn(`[Orchestrator]`, `Execution of command denied by user. Skipping step.`);
-              return;
+              return true; // Not a failure, just skipped
             }
           }
 
           const toolResult = await tool.execute(result.args);
+          if (!toolResult.success) {
+            Logger.error(`[Agent: ${agentName}]`, `Tool '${result.tool}' failed: ${toolResult.error}`);
+            return false;
+          }
+
           Logger.success(`[Agent: ${agentName}]`, `Used tool '${result.tool}'.`);
           if (step.outputKey) {
             this.memory.set(step.outputKey, toolResult);
             Logger.log(`[Memory]`, `Saved tool output to key '${step.outputKey}'.`);
           }
-          return;
+          return true;
         }
 
         if (step.outputKey) {
           if (!result.success) {
             Logger.warn(`[Agent: ${agentName}]`, `Reported failure. Not saving to memory.`);
-            return;
+            return true; // Not a failure, just a reported issue
           }
 
           const valueToStore = result.content;
@@ -158,13 +165,23 @@ ${executionResult.output}
           console.log(executionResult.output);
         }
       }
+      return true;
     };
 
     if (parallel) {
       await Promise.all(workflow.map(runStep));
     } else {
       for (const step of workflow) {
-        await runStep(step);
+        const success = await runStep(step);
+        if (!success) {
+          const onError = step.onError || 'stop';
+          if (onError === 'stop') {
+            Logger.error('[Orchestrator]', 'Workflow stopped due to a critical error.');
+            break;
+          } else {
+            Logger.warn('[Orchestrator]', 'Step failed, but workflow is set to continue.');
+          }
+        }
       }
     }
     this.rl.close();

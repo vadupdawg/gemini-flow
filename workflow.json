@@ -11,6 +11,11 @@
     },
     {
       "agent": "coder",
+      "task": "Attempt to run a non-existent command to demonstrate error handling. Use the runShellCommand tool with 'this-command-does-not-exist'.",
+      "onError": "continue"
+    },
+    {
+      "agent": "coder",
       "task": "Generate Python code for a moving average crossover trading strategy. The output should be a JSON object with a 'content' field containing the code.",
       "outputKey": "algorithm_code"
     },
