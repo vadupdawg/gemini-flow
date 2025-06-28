@@ -1,30 +1,19 @@
 import { Agent } from './Agent';
-import { Memory } from './Memory';
 import { Executor } from './executor';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { tools } from './tools';
+import { getTools, Tool } from './tools';
 import { Logger } from './Logger';
-
-export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
-export type OnErrorStrategy = 'stop' | 'continue';
-
-export interface WorkflowStep {
-  agent: string;
-  task: string;
-  inputKey?: string | string[];
-  outputKey?: string;
-  memoryUpdateStrategy?: MemoryUpdateStrategy;
-  onError?: OnErrorStrategy;
-}
+import { ToDoManager, ToDoItem } from './ToDoManager';
 
 export class Orchestrator {
   private agents: { [name: string]: { mode: string } } = {};
-  private memory = new Memory();
   private executor = new Executor();
   private apiKey: string;
   private rl: readline.Interface;
+  private toDoManager: ToDoManager;
+  private tools: { [name: string]: Tool };
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
@@ -32,6 +21,8 @@ export class Orchestrator {
       input: process.stdin,
       output: process.stdout,
     });
+    this.toDoManager = new ToDoManager();
+    this.tools = getTools(this.toDoManager);
   }
 
   private async confirmExecution(command: string): Promise<boolean> {
@@ -68,38 +59,70 @@ export class Orchestrator {
     return `You are a helpful assistant with the role: ${mode}.`;
   }
 
-  private buildTaskWithContext(task: string, inputKeys?: string | string[]): string {
-    if (!inputKeys) {
-      return task;
+  private buildTaskWithContext(task: string, dependencies: ToDoItem[]): string {
+    let context = '';
+    if (dependencies.length > 0) {
+      const contextData = dependencies.map(dep => ({
+        task: dep.task,
+        result: dep.result,
+      }));
+      context = `\n\n## Context from Completed Tasks\n\n${JSON.stringify(contextData, null, 2)}`;
     }
-
-    const inputs: { [key: string]: any } = {};
-    const keys = Array.isArray(inputKeys) ? inputKeys : [inputKeys];
-
-    for (const key of keys) {
-      inputs[key] = this.memory.get(key);
-    }
-
-    return `${task}
-
-## Context from Memory
-
-${JSON.stringify(inputs, null, 2)}`;
+    return `${task}${context}`;
   }
 
-  async runWorkflow(workflow: WorkflowStep[], parallel = false) {
-    const runStep = async (step: WorkflowStep): Promise<boolean> => {
-      const agentName = step.agent;
+  private async executeTool(toolName: string, args: any, agentName: string): Promise<any> {
+    const tool = this.tools[toolName];
+    if (!tool) {
+      Logger.error(`[Agent: ${agentName}]`, `Unknown tool '${toolName}'`);
+      return { success: false, error: `Unknown tool '${toolName}'` };
+    }
+
+    if (tool.name === 'runShellCommand') {
+      const allowed = await this.confirmExecution(args.command);
+      if (!allowed) {
+        Logger.warn(`[Orchestrator]`, `Execution of command denied by user.`);
+        return { success: false, error: 'Execution denied by user' };
+      }
+    }
+
+    const result = await tool.execute(args);
+    if (result.success) {
+      Logger.success(`[Agent: ${agentName}]`, `Used tool '${toolName}'.`);
+    } else {
+      Logger.error(`[Agent: ${agentName}]`, `Tool '${toolName}' failed: ${result.error}`);
+    }
+    return result;
+  }
+
+  async run(initialPrompt: string) {
+    // Initial task for the planner
+    this.toDoManager.addTask(initialPrompt);
+
+    let nextTask = this.toDoManager.getNextTask();
+    while (nextTask) {
+      const currentTask = nextTask;
+      this.toDoManager.updateTaskStatus(currentTask.id, 'in_progress');
+
+      // For now, we'll use a generic 'coder' agent for all tasks.
+      // In the future, we could have a routing mechanism.
+      const agentName = 'coder'; 
       const agent = this.getAgent(agentName);
       if (!agent) {
         Logger.error(`[Orchestrator]`, `Agent ${agentName} not found.`);
-        return false;
+        this.toDoManager.updateTaskStatus(currentTask.id, 'failed', 'Agent not found');
+        nextTask = this.toDoManager.getNextTask();
+        continue;
       }
 
-      const taskWithContext = this.buildTaskWithContext(step.task, step.inputKey);
+      const dependencies = currentTask.dependencies
+        .map(depId => this.toDoManager.getToDoList().find(t => t.id === depId))
+        .filter((t): t is ToDoItem => !!t);
+      
+      const taskWithContext = this.buildTaskWithContext(currentTask.task, dependencies);
       const systemPrompt = this.getSystemPrompt(agent.mode);
 
-      Logger.log(`[Agent: ${agentName}]`, `Starting task...`);
+      Logger.log(`[Agent: ${agentName}]`, `Starting task #${currentTask.id}: ${currentTask.task}`);
       const executionResult = await this.executor.run({
         task: taskWithContext,
         systemPrompt,
@@ -108,82 +131,32 @@ ${JSON.stringify(inputs, null, 2)}`;
 
       if (!executionResult.success || executionResult.error) {
         Logger.error(`[Agent: ${agentName}]`, `Task failed: ${executionResult.error}`);
-        return false;
+        this.toDoManager.updateTaskStatus(currentTask.id, 'failed', executionResult.error);
+        nextTask = this.toDoManager.getNextTask();
+        continue;
       }
 
-      Logger.log(`[Agent: ${agentName}]`, `Raw output:
----
-${executionResult.output}
----`);
+      Logger.log(`[Agent: ${agentName}]`, `Raw output:\n---\n${executionResult.output}\n---`);
 
       try {
         const result = JSON.parse(executionResult.output);
-
-        if (result.tool && tools[result.tool]) {
-          const tool = tools[result.tool];
-
-          if (tool.name === 'runShellCommand') {
-            const allowed = await this.confirmExecution(result.args.command);
-            if (!allowed) {
-              Logger.warn(`[Orchestrator]`, `Execution of command denied by user. Skipping step.`);
-              return true; // Not a failure, just skipped
-            }
-          }
-
-          const toolResult = await tool.execute(result.args);
-          if (!toolResult.success) {
-            Logger.error(`[Agent: ${agentName}]`, `Tool '${result.tool}' failed: ${toolResult.error}`);
-            return false;
-          }
-
-          Logger.success(`[Agent: ${agentName}]`, `Used tool '${result.tool}'.`);
-          if (step.outputKey) {
-            this.memory.set(step.outputKey, toolResult);
-            Logger.log(`[Memory]`, `Saved tool output to key '${step.outputKey}'.`);
-          }
-          return true;
-        }
-
-        if (step.outputKey) {
-          if (!result.success) {
-            Logger.warn(`[Agent: ${agentName}]`, `Reported failure. Not saving to memory.`);
-            return true; // Not a failure, just a reported issue
-          }
-
-          const valueToStore = result.content;
-          this.memory.set(step.outputKey, valueToStore);
-          Logger.log(`[Memory]`, `Saved output to key '${step.outputKey}'.`);
-        } else if (result.success && result.content) {
-          Logger.log(`[Agent: ${agentName}]`, `Result: ${result.content}`);
+        if (result.tool) {
+          await this.executeTool(result.tool, result.args, agentName);
+        } else {
+            // If the agent doesn't use a tool, we assume it has completed the task
+            // and the content is the result.
+            this.toDoManager.updateTaskStatus(currentTask.id, 'completed', result.content);
+            Logger.success(`[Agent: ${agentName}]`, `Completed task #${currentTask.id}.`);
         }
       } catch (e) {
-        Logger.warn(`[Agent: ${agentName}]`, `Output was not valid JSON. Treating as raw text.`);
-        if (step.outputKey) {
-          this.memory.set(step.outputKey, executionResult.output);
-          Logger.log(`[Memory]`, `Saved raw output to key '${step.outputKey}'.`);
-        } else {
-          console.log(executionResult.output);
-        }
+        Logger.warn(`[Agent: ${agentName}]`, `Output was not valid JSON. Treating as raw text and marking task as completed.`);
+        this.toDoManager.updateTaskStatus(currentTask.id, 'completed', executionResult.output);
       }
-      return true;
-    };
 
-    if (parallel) {
-      await Promise.all(workflow.map(runStep));
-    } else {
-      for (const step of workflow) {
-        const success = await runStep(step);
-        if (!success) {
-          const onError = step.onError || 'stop';
-          if (onError === 'stop') {
-            Logger.error('[Orchestrator]', 'Workflow stopped due to a critical error.');
-            break;
-          } else {
-            Logger.warn('[Orchestrator]', 'Step failed, but workflow is set to continue.');
-          }
-        }
-      }
+      nextTask = this.toDoManager.getNextTask();
     }
+
+    Logger.success('[Orchestrator]', 'All tasks have been completed.');
     this.rl.close();
   }
 }

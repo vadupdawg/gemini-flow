@@ -2,6 +2,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
+import { ToDoManager } from './ToDoManager';
 
 export interface Tool {
   name: string;
@@ -45,7 +46,46 @@ export class RunShellCommandTool implements Tool {
     }
   }
 
-export const tools: { [name: string]: Tool } = {
+export class AddToDoTool implements Tool {
+    name = 'addToDo';
+    description = 'Adds a new task to the to-do list.';
+    
+    constructor(private toDoManager: ToDoManager) {}
+
+    async execute(args: { task: string; dependencies?: number[] }): Promise<any> {
+        const newToDo = this.toDoManager.addTask(args.task, args.dependencies);
+        return { success: true, todo: newToDo };
+    }
+}
+
+export class GetToDoListTool implements Tool {
+    name = 'getToDoList';
+    description = 'Gets the current to-do list.';
+
+    constructor(private toDoManager: ToDoManager) {}
+
+    async execute(): Promise<any> {
+        const todos = this.toDoManager.getToDoList();
+        return { success: true, todos };
+    }
+}
+
+export class UpdateTaskStatusTool implements Tool {
+    name = 'updateTaskStatus';
+    description = 'Updates the status of a task.';
+
+    constructor(private toDoManager: ToDoManager) {}
+
+    async execute(args: { taskId: number; status: 'in_progress' | 'completed' | 'failed'; result?: any }): Promise<any> {
+        this.toDoManager.updateTaskStatus(args.taskId, args.status, args.result);
+        return { success: true };
+    }
+}
+
+export const getTools = (toDoManager: ToDoManager): { [name: string]: Tool } => ({
   writeFile: new WriteFileTool(),
   runShellCommand: new RunShellCommandTool(),
-};
+  addToDo: new AddToDoTool(toDoManager),
+  getToDoList: new GetToDoListTool(toDoManager),
+  updateTaskStatus: new UpdateTaskStatusTool(toDoManager),
+});
