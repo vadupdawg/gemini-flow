@@ -1,6 +1,6 @@
-
 import { Agent } from './Agent';
 import { Memory } from './Memory';
+import { Executor } from './executor';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,14 +9,15 @@ export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
 export interface WorkflowStep {
   agent: string;
   task: string;
-  inputKey?: string | string[]; // Allow multiple inputs
+  inputKey?: string | string[];
   outputKey?: string;
   memoryUpdateStrategy?: MemoryUpdateStrategy;
 }
 
 export class Orchestrator {
-  private agents: { [name: string]: Agent } = {};
+  private agents: { [name: string]: { mode: string } } = {};
   private memory = new Memory();
+  private executor = new Executor();
   private apiKey: string;
 
   constructor(apiKey: string) {
@@ -25,15 +26,15 @@ export class Orchestrator {
 
   addAgent(name: string, mode: string) {
     if (!this.agents[name]) {
-      this.agents[name] = new Agent(name, mode, this.apiKey);
+      this.agents[name] = { mode };
     }
   }
 
-  getAgent(name: string): Agent | undefined {
+  getAgent(name: string): { mode: string } | undefined {
     return this.agents[name];
   }
 
-  private async getSystemPrompt(mode: string): Promise<string> {
+  private getSystemPrompt(mode: string): string {
     const userPromptPath = path.join(process.cwd(), '.gemini', 'prompts', 'modes', `${mode}.md`);
     if (fs.existsSync(userPromptPath)) {
       return fs.readFileSync(userPromptPath, 'utf-8');
@@ -44,31 +45,14 @@ export class Orchestrator {
       return fs.readFileSync(templatePath, 'utf-8');
     }
 
-    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found. Generating a new one...`);
-
-    // The prompt for the prompt-engineer itself MUST exist.
-    const metaPromptPath = path.join(__dirname, '..', 'templates', 'prompts', 'modes', 'prompt-engineer.md');
-    if (!fs.existsSync(metaPromptPath)) {
-      console.error("[Orchestrator] CRITICAL: Meta prompt for 'prompt-engineer' not found. Cannot generate new prompts.");
-      return `You are a helpful assistant. Your role is '${mode}'.`; // Fallback
-    }
-    const metaPrompt = fs.readFileSync(metaPromptPath, 'utf-8');
-
-    const promptEngineer = new Agent('prompt-engineer', 'prompt-engineer', this.apiKey);
-    const newPrompt = await promptEngineer.run(`Create a system prompt for an agent with the role: '${mode}'`, metaPrompt);
-
-    // Save the newly generated prompt for future use
-    fs.writeFileSync(userPromptPath, newPrompt);
-    console.log(`[Orchestrator] New prompt for '${mode}' generated and saved to ${userPromptPath}`);
-
-    return newPrompt;
+    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found. Using a default.`);
+    return `You are a helpful assistant with the role: ${mode}.`;
   }
 
   private buildTaskWithContext(task: string, inputKeys?: string | string[]): string {
     if (!inputKeys) {
       return task;
     }
-
 
     const inputs: { [key: string]: any } = {};
     const keys = Array.isArray(inputKeys) ? inputKeys : [inputKeys];
@@ -89,8 +73,20 @@ export class Orchestrator {
       }
 
       const taskWithContext = this.buildTaskWithContext(step.task, step.inputKey);
-      const systemPrompt = await this.getSystemPrompt(agent.mode);
-      const result = await agent.run(taskWithContext, systemPrompt);
+      const systemPrompt = this.getSystemPrompt(agent.mode);
+
+      const executionResult = await this.executor.run({
+        task: taskWithContext,
+        systemPrompt,
+        apiKey: this.apiKey,
+      });
+
+      if (!executionResult.success) {
+        console.error(`[Orchestrator] Task failed for agent ${step.agent}:`, executionResult.error);
+        return;
+      }
+
+      const result = executionResult.output;
 
       if (step.outputKey) {
         const strategy = step.memoryUpdateStrategy || 'overwrite';
@@ -113,12 +109,11 @@ export class Orchestrator {
             break;
           case 'overwrite':
           default:
-            // newValue is already the result
             break;
         }
-        
+
         this.memory.set(step.outputKey, newValue);
-        console.log(`[Orchestrator] Agent ${agent.name} saved output to memory key '${step.outputKey}' using strategy '${strategy}'`);
+        console.log(`[Orchestrator] Agent ${step.agent} saved output to memory key '${step.outputKey}' using strategy '${strategy}'`);
       } else {
         console.log(result);
       }
