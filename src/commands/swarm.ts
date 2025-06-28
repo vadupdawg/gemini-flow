@@ -7,6 +7,7 @@ import { Logger } from '../core/Logger';
 import { Executor } from '../core/executor';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ToDoManager } from '../core/ToDoManager';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ export const swarmCommand = () => {
 
       const orchestrator = new Orchestrator(apiKey);
       const executor = new Executor();
+      const toDoManager = new ToDoManager();
 
       // Define all possible agents in the swarm
       const agents = [
@@ -35,7 +37,7 @@ export const swarmCommand = () => {
         orchestrator.addAgent(agent, agent);
       }
 
-      // Step 1: Use a swarm-coordinator to generate a plan (a list of to-do items)
+      // Step 1: Use a swarm-coordinator to generate a plan
       Logger.log('[Swarm]', 'Initializing swarm-coordinator to generate a plan...');
       const coordinatorPrompt = `Based on the following goal, create a detailed plan as a series of tasks. For each task, specify the most appropriate agent to perform it. The available agents are: ${agents.join(', ')}. The goal is: "${goal}"`;
       
@@ -54,26 +56,30 @@ export const swarmCommand = () => {
       }
 
       try {
-        const plan = JSON.parse(planResult.output);
-        Logger.success('[Swarm]', 'Plan generated successfully:');
-        console.log(JSON.stringify(plan, null, 2));
+        // Extract the JSON content from the agent's output
+        let rawContent = JSON.parse(planResult.output).content;
+        rawContent = rawContent.replace(/```json\n/g, '').replace(/\n```$/g, '');
+        const plan = JSON.parse(rawContent);
+
+        Logger.success('[Swarm]', 'Plan generated successfully.');
 
         // Step 2: Add the generated plan to the to-do list
+        Logger.log('[Swarm]', 'Adding generated plan to the to-do list...');
         for (const task of plan) {
-          orchestrator.addAgent(task.agent, task.agent); // Ensure agent is added
-          // The initial prompt for the orchestrator will now be the plan itself
+          toDoManager.addTask(task.task, task.agent, task.dependencies);
         }
         
         // Step 3: Execute the plan
-        Logger.log('[Swarm]', 'Executing the generated plan...');
-        await orchestrator.run(`The plan has been generated. Please execute the tasks in the to-do list. The first task is for the ${plan[0].agent}.`);
+        Logger.log('[Swarm]', 'Starting orchestrator to execute the plan...');
+        await orchestrator.run(`The plan has been generated and added to the to-do list. Start executing the first available task.`);
 
       } catch (e) {
-        Logger.error('[Swarm]', `Failed to parse the generated plan. Raw output:
-${planResult.output}`);
+        Logger.error('[Swarm]', `Failed to parse the generated plan. Error: ${(e as Error).message}. Raw output:\n${planResult.output}`);
       }
     });
 
   return command;
 };
+
+
 
