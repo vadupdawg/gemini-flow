@@ -3,6 +3,7 @@ import { Memory } from './Memory';
 import { Executor } from './executor';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as readline from 'readline';
 import { tools } from './tools';
 
 export type MemoryUpdateStrategy = 'overwrite' | 'append' | 'merge';
@@ -20,9 +21,30 @@ export class Orchestrator {
   private memory = new Memory();
   private executor = new Executor();
   private apiKey: string;
+  private rl: readline.Interface;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+  }
+
+  private async confirmExecution(command: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      this.rl.question(
+        `
+[SECURITY] Agent wants to execute the following command:
+
+  ${command}
+
+Do you want to allow this? (y/n): `,
+        (answer) => {
+          resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
+        }
+      );
+    });
   }
 
   addAgent(name: string, mode: string) {
@@ -56,7 +78,7 @@ export class Orchestrator {
     }
 
     const inputs: { [key: string]: any } = {};
-    const keys = Array.isArray(inputKeys) ? inputKeys : [inputKeys];
+    const keys = Array.isArray(inputKeys) ? keys : [inputKeys];
 
     for (const key of keys) {
       inputs[key] = this.memory.get(key);
@@ -107,6 +129,15 @@ ${executionResult.output}
 
         if (result.tool && tools[result.tool]) {
           const tool = tools[result.tool];
+
+          if (tool.name === 'runShellCommand') {
+            const allowed = await this.confirmExecution(result.args.command);
+            if (!allowed) {
+              console.log(`[Orchestrator] Execution of command denied by user. Skipping step.`);
+              return;
+            }
+          }
+
           const toolResult = await tool.execute(result.args);
           console.log(`[Orchestrator] Agent ${step.agent} used tool '${result.tool}'. Result:`, toolResult);
           if (step.outputKey) {
@@ -141,8 +172,6 @@ ${executionResult.output}
 ${valueToStore}` : valueToStore;
               break;
             case 'merge':
-              // Merging doesn't make as much sense with this new structure,
-              // but we'll keep a basic version.
               try {
                 const existingJson = existingValue ? JSON.parse(existingValue) : {};
                 const newJson = JSON.parse(valueToStore);
@@ -167,7 +196,6 @@ ${valueToStore}` : valueToStore;
           console.log(result.content);
         }
       } catch (e) {
-        // Handle cases where the output is not JSON (e.g., from older prompts)
         console.log(`[Orchestrator] Agent ${step.agent} output was not valid JSON. Treating as raw text.`);
         if (step.outputKey) {
           this.memory.set(step.outputKey, executionResult.output);
@@ -185,5 +213,6 @@ ${valueToStore}` : valueToStore;
         await runStep(step);
       }
     }
+    this.rl.close();
   }
 }
