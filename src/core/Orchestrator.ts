@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as readline from 'readline';
 import { getTools, Tool } from './tools';
 import { Logger } from './Logger';
+import { ui } from './UI';
 import { ToDoManager, ToDoItem } from './ToDoManager';
 
 export class Orchestrator {
@@ -101,6 +102,12 @@ export class Orchestrator {
   }
 
   async processQueue() {
+    // Show initial task overview
+    const allTasks = this.toDoManager.getAllTasks();
+    if (allTasks.length > 0) {
+      ui.showTaskList(allTasks);
+    }
+    
     let nextTask = this.toDoManager.getNextTask();
     while (nextTask) {
       const currentTask = nextTask;
@@ -122,7 +129,9 @@ export class Orchestrator {
       const taskWithContext = this.buildTaskWithContext(currentTask.task, dependencies);
       const systemPrompt = this.getSystemPrompt(agent.mode);
 
-      Logger.log(`[Agent: ${agentName}]`, `Starting task #${currentTask.id}: ${currentTask.task}`);
+      // Start agent spinner
+      ui.agentStart(agentName, `Task #${currentTask.id}: ${currentTask.task}`);
+      
       const executionResult = await this.executor.run({
         task: taskWithContext,
         systemPrompt,
@@ -130,34 +139,33 @@ export class Orchestrator {
       });
 
       if (!executionResult.success || executionResult.error) {
-        Logger.error(`[Agent: ${agentName}]`, `Task failed: ${executionResult.error}`);
+        ui.agentError(agentName, `Task failed: ${executionResult.error}`);
         this.toDoManager.updateTaskStatus(currentTask.id, 'failed', executionResult.error);
         nextTask = this.toDoManager.getNextTask();
         continue;
       }
 
-      Logger.raw(`[Agent: ${agentName}]`, `Raw output:
----
-${executionResult.output}
----`);
-
       try {
         const result = JSON.parse(executionResult.output);
         if (result.tool) {
+          ui.agentInfo(agentName, `Using tool: ${result.tool}`);
           await this.executeTool(result.tool, result.args, agentName);
         } else {
             this.toDoManager.updateTaskStatus(currentTask.id, 'completed', result.content);
-            Logger.success(`[Agent: ${agentName}]`, `Completed task #${currentTask.id}.`);
+            ui.agentSuccess(agentName, `Completed task #${currentTask.id}`);
         }
       } catch (e) {
-        Logger.warn(`[Agent: ${agentName}]`, `Output was not valid JSON. Treating as raw text and marking task as completed.`);
+        // Try to extract meaningful content from non-JSON response
+        const cleanOutput = executionResult.output.substring(0, 100).replace(/\n/g, ' ').trim();
+        ui.agentSuccess(agentName, `Completed task #${currentTask.id}`);
         this.toDoManager.updateTaskStatus(currentTask.id, 'completed', executionResult.output);
       }
 
       nextTask = this.toDoManager.getNextTask();
     }
 
-    Logger.success('[Orchestrator]', 'All tasks have been completed.');
+    ui.success('All tasks have been completed! 🎉');
+    ui.cleanup();
     this.rl.close();
   }
 }

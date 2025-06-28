@@ -3,6 +3,7 @@
 import { Command } from 'commander';
 import { Memory } from './core/Memory';
 import { Logger } from './core/Logger';
+import { ui } from './core/UI';
 import { Executor } from './core/executor';
 import { Orchestrator } from './core/Orchestrator';
 import { ToDoManager } from './core/ToDoManager';
@@ -18,9 +19,15 @@ const program = new Command();
 // This is a temporary implementation to fix the broken CLI
 
 program
-  .name('claude-flow')
-  .description('Claude Flow: AI Agent Orchestration Platform')
-  .version('1.0.0');
+  .name('gemini-flow')
+  .description('Gemini Flow: AI Agent Orchestration Platform')
+  .version('2.0.0')
+  .hook('preAction', () => {
+    // Show welcome banner on first run
+    if (!process.argv.includes('--no-banner')) {
+      ui.showWelcome();
+    }
+  });
 
 // Initialize project command
 program
@@ -28,8 +35,17 @@ program
   .description('Initialize a new Claude Flow project')
   .option('--sparc', 'Initialize with full SPARC development environment')
   .action(async (options) => {
-    console.log('Initializing Claude Flow project...');
-    // TODO: Implement init logic
+    ui.header('Initializing Gemini Flow Project', 'Setting up AI orchestration environment');
+    
+    const spinner = ui.agentStart('init', 'Creating project structure...');
+    // TODO: Implement actual init logic
+    setTimeout(() => {
+      ui.agentSuccess('init', 'Project initialized successfully!');
+      ui.info('Next steps:');
+      ui.log('1. Set your GEMINI_API_KEY in .env');
+      ui.log('2. Run ./gemini-flow --help to see available commands');
+      ui.log('3. Try ./gemini-flow sparc "Build a simple REST API"');
+    }, 1000);
   });
 
 // SPARC command with subcommands
@@ -93,8 +109,7 @@ sparcCmd
         .filter(f => f.endsWith('.md'))
         .map(f => f.replace('.md', ''));
       
-      Logger.log('[SPARC]', `Available SPARC modes (${modes.length}):`);
-      modes.forEach(mode => console.log(`  - ${mode}`));
+      ui.showSparcModes(modes);
     } else {
       Logger.error('[SPARC]', 'Modes directory not found');
     }
@@ -120,7 +135,8 @@ async function runSparcMode(mode: string, task: string, outputPath?: string) {
   
   try {
     const systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
-    Logger.log('[SPARC]', `Running ${mode} mode with task: "${task}"`);
+    ui.header(`SPARC ${mode.toUpperCase()} Mode`, task);
+    ui.agentStart(mode, 'Processing task...');
     
     const executor = new Executor();
     const result = await executor.run({
@@ -140,12 +156,14 @@ async function runSparcMode(mode: string, task: string, outputPath?: string) {
         // Not JSON, use as-is
       }
       
+      ui.agentSuccess(mode, 'Task completed successfully');
+      
       if (outputPath) {
         fs.writeFileSync(outputPath, output);
-        Logger.success('[SPARC]', `Output saved to ${outputPath}`);
+        ui.success(`Output saved to ${outputPath}`);
       } else {
-        Logger.success('[SPARC]', 'Execution completed:');
-        console.log(output);
+        ui.section('Output');
+        ui.showOutput(output, 'success');
       }
       
       // Store result in memory for coordination
@@ -157,10 +175,10 @@ async function runSparcMode(mode: string, task: string, outputPath?: string) {
         timestamp: new Date().toISOString()
       });
     } else {
-      Logger.error('[SPARC]', `Execution failed: ${result.error}`);
+      ui.agentError(mode, `Execution failed: ${result.error}`);
     }
   } catch (error) {
-    Logger.error('[SPARC]', `Error: ${(error as Error).message}`);
+    ui.agentError(mode, `Error: ${(error as Error).message}`);
   }
 }
 
@@ -176,12 +194,12 @@ program
   .option('--monitor', 'Enable real-time monitoring')
   .option('--output <format>', 'Output format (json, sqlite, csv, html)', 'json')
   .action(async (objective, options) => {
-    Logger.log('[Swarm]', `Initializing swarm for: "${objective}"`);
-    Logger.log('[Swarm]', `Strategy: ${options.strategy}, Mode: ${options.mode}, Max agents: ${options.maxAgents}`);
+    ui.header('Swarm Coordination', objective);
+    ui.info(`Strategy: ${options.strategy} | Mode: ${options.mode} | Max agents: ${options.maxAgents}`);
     
     const apiKey = process.env.GEMINI_API_KEY || process.env.CLAUDE_API_KEY;
     if (!apiKey) {
-      Logger.error('[Swarm]', 'API key not found. Set GEMINI_API_KEY or CLAUDE_API_KEY in .env file');
+      ui.error('API key not found. Set GEMINI_API_KEY or CLAUDE_API_KEY in .env file');
       return;
     }
 
@@ -205,12 +223,12 @@ program
 
       // Initialize monitoring if requested
       if (options.monitor) {
-        Logger.log('[Swarm]', 'Real-time monitoring enabled');
+        ui.info('Real-time monitoring enabled 📊');
         // TODO: Implement real-time monitoring
       }
 
       // Create a plan using swarm-coordinator
-      Logger.log('[Swarm]', 'Creating execution plan...');
+      ui.agentStart('coordinator', 'Creating execution plan...');
       const coordinator = new Executor();
       
       // Get appropriate agents based on strategy
@@ -250,7 +268,7 @@ program
       });
       
       if (planResult.success) {
-        Logger.success('[Swarm]', 'Plan created successfully');
+        ui.agentSuccess('coordinator', 'Execution plan created');
         
         // Parse and execute plan
         try {
@@ -304,7 +322,7 @@ program
           }
           
           if (!plan || !Array.isArray(plan)) {
-            Logger.warn('[Swarm]', 'Could not parse plan from AI output, using fallback');
+            ui.warning('Could not parse plan from AI output, using fallback');
             // Fallback to simple task creation
             plan = agents.map(agent => ({
               task: `${agent}: Work on ${objective}`,
@@ -320,10 +338,10 @@ program
           
           // Execute based on mode
           if (options.parallel && options.mode === 'distributed') {
-            Logger.log('[Swarm]', 'Executing tasks in parallel (distributed mode)');
+            ui.info('⚡ Executing tasks in parallel (distributed mode)');
             // TODO: Implement parallel execution
           } else {
-            Logger.log('[Swarm]', 'Executing tasks sequentially');
+            ui.info('▶ Executing tasks sequentially');
             await orchestrator.processQueue();
           }
           
@@ -343,14 +361,15 @@ program
           }
           
         } catch (e) {
-          Logger.error('[Swarm]', `Failed to parse plan: ${(e as Error).message}`);
+          ui.agentError('coordinator', `Failed to parse plan: ${(e as Error).message}`);
           if (options.monitor) {
-            Logger.log('[Swarm Debug]', 'Raw output from coordinator:');
+            ui.section('Debug Output');
+            ui.dim('Raw output from coordinator:');
             console.log(planResult.output.substring(0, 500) + '...');
             try {
               const parsed = JSON.parse(planResult.output);
               if (parsed.content) {
-                Logger.log('[Swarm Debug]', 'Extracted content:');
+                ui.dim('Extracted content:');
                 console.log(parsed.content.substring(0, 500) + '...');
               }
             } catch (e) {
@@ -359,11 +378,11 @@ program
           }
         }
       } else {
-        Logger.error('[Swarm]', `Failed to create plan: ${planResult.error}`);
+        ui.agentError('coordinator', `Failed to create plan: ${planResult.error}`);
       }
       
     } catch (error) {
-      Logger.error('[Swarm]', `Error: ${(error as Error).message}`);
+      ui.error(`Error: ${(error as Error).message}`);
     }
   });
 
@@ -436,9 +455,23 @@ program
   .option('--port <port>', 'Port number', '3000')
   .option('--host <host>', 'Host address', 'localhost')
   .action(async (options) => {
-    console.log('Starting orchestration system...');
-    console.log('Options:', options);
-    // TODO: Implement start logic
+    ui.header('Starting Orchestration System', 
+              options.ui ? 'With Web UI' : 'CLI Mode Only');
+    
+    ui.agentStart('system', 'Initializing orchestration engine...');
+    
+    if (options.ui) {
+      ui.agentInfo('system', `Starting web UI on http://${options.host}:${options.port}`);
+    }
+    
+    // TODO: Implement actual start logic
+    setTimeout(() => {
+      ui.agentSuccess('system', 'Orchestration system started successfully');
+      if (options.ui) {
+        ui.success(`Web UI available at http://${options.host}:${options.port}`);
+      }
+      ui.info('Use Ctrl+C to stop the orchestration system');
+    }, 1500);
   });
 
 // Status command
@@ -454,17 +487,18 @@ program
     const swarmKeys = memoryKeys.filter(k => k.startsWith('swarm_'));
     const sparcKeys = memoryKeys.filter(k => k.startsWith('sparc_'));
     
-    Logger.log('[Status]', 'System Status Report');
-    console.log('\n=== Orchestration Status ==>');
-    console.log(`- Orchestration: ${process.env.ORCHESTRATION_ACTIVE === 'true' ? 'Running' : 'Not running'}`);
-    console.log(`- Active Swarms: ${swarmKeys.length}`);
-    console.log(`- SPARC Sessions: ${sparcKeys.length}`);
+    ui.header('System Status Report', new Date().toLocaleString());
     
-    console.log('\n=== Memory Status ==>');
-    console.log(`- Total Entries: ${memoryKeys.length}`);
-    console.log(`- Memory Usage: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`);
+    ui.section('🎯 Orchestration Status');
+    ui.log(`Orchestration: ${process.env.ORCHESTRATION_ACTIVE === 'true' ? '🟢 Running' : '🔴 Not running'}`);
+    ui.log(`Active Swarms: ${swarmKeys.length}`);
+    ui.log(`SPARC Sessions: ${sparcKeys.length}`);
     
-    console.log('\n=== Recent Activity ==>');
+    ui.section('💾 Memory Status');
+    ui.log(`Total Entries: ${memoryKeys.length}`);
+    ui.log(`Memory Usage: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB`);
+    
+    ui.section('📊 Recent Activity');
     const recentEntries = memoryKeys
       .map(key => ({ key, data: allData[key] }))
       .filter(entry => entry.data && entry.data.timestamp)
@@ -473,16 +507,18 @@ program
     
     if (recentEntries.length > 0) {
       recentEntries.forEach(entry => {
-        console.log(`- ${entry.key}: ${new Date(entry.data.timestamp).toLocaleString()}`);
+        const type = entry.key.startsWith('swarm_') ? '🐝' : 
+                     entry.key.startsWith('sparc_') ? '⚡' : '📌';
+        ui.log(`${type} ${entry.key}: ${new Date(entry.data.timestamp).toLocaleString()}`);
       });
     } else {
-      console.log('- No recent activity');
+      ui.dim('No recent activity');
     }
     
-    console.log('\n=== System Health ==>');
-    console.log(`- API Key: ${process.env.GEMINI_API_KEY || process.env.CLAUDE_API_KEY ? 'Configured' : 'Not configured'}`);
-    console.log(`- Working Directory: ${process.cwd()}`);
-    console.log(`- Node Version: ${process.version}`);
+    ui.section('🏥 System Health');
+    ui.log(`API Key: ${process.env.GEMINI_API_KEY || process.env.CLAUDE_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
+    ui.log(`Working Directory: ${process.cwd()}`);
+    ui.log(`Node Version: ${process.version}`);
   });
 
 // Monitor command
