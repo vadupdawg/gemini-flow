@@ -60,19 +60,21 @@ export const swarmCommand: CommandModule = {
     }
 
     try {
-      const rawOutput = planResult.output;
+      // First, parse the outer JSON shell from the executor
+      const executorResponse = JSON.parse(planResult.output);
+      const agentContent = executorResponse.content;
+
       let planJsonString: string | null = null;
 
-      // First, try to find a markdown JSON block. This is the most reliable method.
-      const markdownMatch = rawOutput.match(/```(json)?\s*([\s\S]+?)\s*```/);
+      // Now, find the JSON plan within the agent's content
+      const markdownMatch = agentContent.match(/```(json)?\s*([\s\S]+?)\s*```/);
       if (markdownMatch && markdownMatch[2]) {
         planJsonString = markdownMatch[2];
       } else {
-        // If no markdown block, fall back to finding the first and last brackets.
-        const firstBracket = rawOutput.indexOf('[');
-        const lastBracket = rawOutput.lastIndexOf(']');
+        const firstBracket = agentContent.indexOf('[');
+        const lastBracket = agentContent.lastIndexOf(']');
         if (firstBracket !== -1 && lastBracket > firstBracket) {
-          planJsonString = rawOutput.substring(firstBracket, lastBracket + 1);
+          planJsonString = agentContent.substring(firstBracket, lastBracket + 1);
         }
       }
 
