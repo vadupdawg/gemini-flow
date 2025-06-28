@@ -24,6 +24,11 @@ export const sparcCommand = () => {
       // Define a memory-driven workflow
       const workflow: WorkflowStep[] = [
         {
+            agent: 'coder',
+            task: 'Check the installed Python version to ensure compatibility. Use the runShellCommand tool.',
+            outputKey: 'python_version'
+        },
+        {
           agent: 'coder',
           task: 'Generate Python code for a moving average crossover trading strategy. The output should be a JSON object with a "content" field containing the code.',
           outputKey: 'algorithm_code'

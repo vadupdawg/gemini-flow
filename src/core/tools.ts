@@ -1,6 +1,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { exec } from 'child_process';
 
 export interface Tool {
   name: string;
@@ -27,6 +28,24 @@ export class WriteFileTool implements Tool {
   }
 }
 
+export class RunShellCommandTool implements Tool {
+    name = 'runShellCommand';
+    description = 'Executes a shell command.';
+  
+    async execute(args: { command: string }): Promise<any> {
+      return new Promise((resolve) => {
+        exec(args.command, (error, stdout, stderr) => {
+          if (error) {
+            resolve({ success: false, error: error.message, stdout, stderr });
+            return;
+          }
+          resolve({ success: true, stdout, stderr });
+        });
+      });
+    }
+  }
+
 export const tools: { [name: string]: Tool } = {
   writeFile: new WriteFileTool(),
+  runShellCommand: new RunShellCommandTool(),
 };
