@@ -86,6 +86,17 @@ export class Orchestrator {
         return;
       }
       
+      if (executionResult.error) {
+        console.error(`[Orchestrator] Error executing task for agent ${step.agent}: ${executionResult.error}`);
+        return;
+      }
+
+      // DEBUG: Log raw agent output
+      console.log(`[Orchestrator] Raw output from agent ${step.agent}:
+---
+${executionResult.output}
+---`);
+
       try {
         const result = JSON.parse(executionResult.output);
 
@@ -142,7 +153,13 @@ ${valueToStore}` : valueToStore;
         }
       } catch (e) {
         // Handle cases where the output is not JSON (e.g., from older prompts)
-        console.log(`[Orchestrator] Raw output from agent ${step.agent}: ${executionResult.output}`);
+        console.log(`[Orchestrator] Agent ${step.agent} output was not valid JSON. Treating as raw text.`);
+        if (step.outputKey) {
+          this.memory.set(step.outputKey, executionResult.output);
+          console.log(`[Orchestrator] Agent ${step.agent} saved raw output to memory key '${step.outputKey}'`);
+        } else {
+          console.log(executionResult.output);
+        }
       }
     };
 
