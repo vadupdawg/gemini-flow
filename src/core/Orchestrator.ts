@@ -7,6 +7,7 @@ import { getTools, Tool } from './tools';
 import { Logger } from './Logger';
 import { ui } from './UI';
 import { ToDoManager, ToDoItem } from './ToDoManager';
+import { InteractiveMode } from './InteractiveMode';
 
 export class Orchestrator {
   private agents: { [name: string]: { mode: string } } = {};
@@ -166,6 +167,10 @@ export class Orchestrator {
 
     ui.success('All tasks have been completed! 🎉');
     ui.cleanup();
-    this.rl.close();
+    
+    // Only close rl if not in interactive mode
+    if (!InteractiveMode.isActive()) {
+      this.rl.close();
+    }
   }
 }

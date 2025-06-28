@@ -7,6 +7,7 @@ import { ui } from './core/UI';
 import { Executor } from './core/executor';
 import { Orchestrator } from './core/Orchestrator';
 import { ToDoManager } from './core/ToDoManager';
+import { InteractiveMode } from './core/InteractiveMode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -22,12 +23,7 @@ program
   .name('gemini-flow')
   .description('Gemini Flow: AI Agent Orchestration Platform')
   .version('2.0.0')
-  .hook('preAction', () => {
-    // Show welcome banner on first run
-    if (!process.argv.includes('--no-banner')) {
-      ui.showWelcome();
-    }
-  });
+  .option('-i, --interactive', 'Start in interactive mode');
 
 // Initialize project command
 program
@@ -656,4 +652,35 @@ program
       })
   );
 
-program.parse();
+// Check if we should enter interactive mode
+async function main() {
+  // If no command is provided or --interactive flag is used, enter interactive mode
+  const args = process.argv.slice(2);
+  const shouldEnterInteractive = args.length === 0 || 
+                                 args.includes('--interactive') || 
+                                 args.includes('-i');
+  
+  if (shouldEnterInteractive) {
+    // Remove --interactive flag from args if present
+    process.argv = process.argv.filter(arg => arg !== '--interactive' && arg !== '-i');
+    
+    // Start interactive mode
+    const interactive = new InteractiveMode(program);
+    await interactive.start();
+  } else {
+    // Normal command execution
+    program.parse();
+  }
+}
+
+// Handle uncaught errors gracefully
+process.on('unhandledRejection', (error) => {
+  ui.error(`Unhandled error: ${(error as Error).message}`);
+  process.exit(1);
+});
+
+// Start the application
+main().catch(error => {
+  ui.error(`Fatal error: ${error.message}`);
+  process.exit(1);
+});
