@@ -349,11 +349,20 @@ program
             endTime: new Date().toISOString()
           });
           
-          // Output results in requested format
+          // Output results in requested format (compact)
           if (options.output === 'json') {
-            console.log(JSON.stringify({ objective, plan, results }, null, 2));
+            // Only output a summary for better readability
+            const summary = {
+              objective,
+              totalTasks: plan.length,
+              completed: results.filter((r: any) => r.status === 'completed').length,
+              swarmId: `${swarmId}_results`,
+              message: "Full results stored in memory. Use 'memory get' to retrieve."
+            };
+            console.log(JSON.stringify(summary, null, 2));
           } else {
-            Logger.log('[Swarm]', `Results stored in memory with key: ${swarmId}_results`);
+            ui.success(`Swarm completed! Results stored with key: ${swarmId}_results`);
+            ui.info(`Use 'memory get ${swarmId}_results' to retrieve full results`);
           }
           
         } catch (e) {
@@ -654,8 +663,27 @@ program
 
 // Check if we should enter interactive mode
 async function main() {
-  // If no command is provided or --interactive flag is used, enter interactive mode
   const args = process.argv.slice(2);
+  
+  // Debug mode
+  if (args.includes('--debug')) {
+    console.log('Debug: args =', args);
+    console.log('Debug: process.argv =', process.argv);
+  }
+  
+  // First check if it's a special flag that commander handles
+  const isSpecialFlag = args.some(arg => 
+    arg === '--version' || arg === '-V' || 
+    arg === '--help' || arg === '-h'
+  );
+  
+  if (isSpecialFlag) {
+    // Let commander handle these special flags
+    program.parse();
+    return;
+  }
+  
+  // If no command is provided or --interactive flag is used, enter interactive mode
   const shouldEnterInteractive = args.length === 0 || 
                                  args.includes('--interactive') || 
                                  args.includes('-i');
@@ -664,9 +692,15 @@ async function main() {
     // Remove --interactive flag from args if present
     process.argv = process.argv.filter(arg => arg !== '--interactive' && arg !== '-i');
     
-    // Start interactive mode
-    const interactive = new InteractiveMode(program);
-    await interactive.start();
+    try {
+      // Start interactive mode
+      const interactive = new InteractiveMode(program);
+      await interactive.start();
+    } catch (err) {
+      ui.error(`Failed to start interactive mode: ${(err as Error).message}`);
+      console.error('Interactive mode error:', err);
+      process.exit(1);
+    }
   } else {
     // Normal command execution
     program.parse();
