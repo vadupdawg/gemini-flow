@@ -89,10 +89,14 @@ const swarmCommand = () => {
             return;
         }
         try {
-            // Extract the JSON content from the agent's output
-            let rawContent = JSON.parse(planResult.output).content;
-            rawContent = rawContent.replace(/```json\n/g, '').replace(/\n```$/g, '');
-            const plan = JSON.parse(rawContent);
+            const agentOutput = JSON.parse(planResult.output);
+            const content = agentOutput.content;
+            // Use a regex to reliably extract the JSON block
+            const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
+            if (!jsonMatch || !jsonMatch[1]) {
+                throw new Error("Could not find a valid JSON block in the agent's output.");
+            }
+            const plan = JSON.parse(jsonMatch[1]);
             Logger_1.Logger.success('[Swarm]', 'Plan generated successfully.');
             // Step 2: Add the generated plan to the to-do list
             Logger_1.Logger.log('[Swarm]', 'Adding generated plan to the to-do list...');
