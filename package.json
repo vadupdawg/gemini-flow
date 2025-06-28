@@ -10,7 +10,7 @@
     "dist"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "ts-node src/index.ts",
     "build": "tsc && cpx \"src/templates/**/*\" \"dist/templates\"",
     "prepublishOnly": "npm run build"
@@ -27,14 +27,19 @@
     "@google/generative-ai": "^0.24.1",
     "@types/express": "^5.0.3",
     "@types/node": "^24.0.7",
+    "@types/yargs": "^17.0.33",
     "chalk": "^4.1.2",
     "commander": "^14.0.0",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
-    "cpx": "^1.5.0"
+    "@types/jest": "^30.0.0",
+    "cpx": "^1.5.0",
+    "jest": "^30.0.3",
+    "ts-jest": "^29.4.0"
   }
 }

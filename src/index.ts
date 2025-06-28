@@ -1,18 +1,13 @@
 #!/usr/bin/env node
 
-import { Command } from 'commander';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
 import { commands } from './commands';
 
-const program = new Command();
+const cli = yargs(hideBin(process.argv));
 
-program
-  .name('gemini-flow')
-  .description('A multi-agent orchestration system for Gemini models.')
-  .version('0.0.1');
-
-// Register all commands
-for (const command of commands) {
-    program.addCommand(command());
-}
-
-program.parse(process.argv);
+cli
+    .command(commands)
+    .demandCommand(1, 'You need at least one command before moving on')
+    .help()
+    .argv;

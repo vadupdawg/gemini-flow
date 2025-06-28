@@ -32,18 +32,23 @@ export class ToDoManager {
     fs.writeFileSync(this.todoFilePath, JSON.stringify(data, null, 2));
   }
 
-  getToDoList(): ToDoItem[] {
+  getAllTasks(): ToDoItem[] {
     return this.todos;
   }
 
-  addTask(task: string, agent: string, dependencies: number[] = []): ToDoItem {
+  getTaskById(id: number): ToDoItem | undefined {
+    return this.todos.find(t => t.id === id);
+  }
+
+  addTask(task: string, agent: string, dependencies: (number | string)[] = []): ToDoItem {
     const newId = this.todos.length > 0 ? Math.max(...this.todos.map(t => t.id)) + 1 : 1;
+    const numericDependencies = dependencies.map(d => parseInt(d as string, 10));
     const newTask: ToDoItem = {
       id: newId,
       task,
       agent,
       status: 'pending',
-      dependencies,
+      dependencies: numericDependencies,
     };
     this.todos.push(newTask);
     this.saveToDos();

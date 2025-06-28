@@ -1,11 +1,18 @@
 # Dependencies
 /node_modules
 
+# Build output
+/dist
+
+# Test configuration
+jest.config.js
+
 # Environment variables
 .env
 
 # Memory
 .gemini/memory.json
+todo.json
 
 # Logs
 npm-debug.log*

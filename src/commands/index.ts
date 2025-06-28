@@ -1,8 +1,12 @@
-import { flowCommand } from './flow';
 import { initCommand } from './init';
-import { memoryCommand } from './memory';
-import { startCommand } from './start';
+import { flowCommand } from './flow';
 import { swarmCommand } from './swarm';
+import { startCommand } from './start';
+import { memoryCommand } from './memory';
+import { sparcCommand } from './sparc';
+import { agentCommand } from './agent';
+import { batchtoolCommand } from './batchtool';
+import { taskCommand } from './task';
 
 export const commands = [
   initCommand,
@@ -10,4 +14,8 @@ export const commands = [
   swarmCommand,
   startCommand,
   memoryCommand,
+  sparcCommand,
+  agentCommand,
+  batchtoolCommand,
+  taskCommand,
 ];

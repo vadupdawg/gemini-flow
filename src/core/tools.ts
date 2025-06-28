@@ -1,4 +1,3 @@
-
 import * as fs from 'fs';
 import * as path from 'path';
 import { exec } from 'child_process';
@@ -58,14 +57,14 @@ export class AddToDoTool implements Tool {
     }
 }
 
-export class GetToDoListTool implements Tool {
-    name = 'getToDoList';
+export class GetAllTasksTool implements Tool {
+    name = 'getAllTasks';
     description = 'Gets the current to-do list.';
 
     constructor(private toDoManager: ToDoManager) {}
 
     async execute(): Promise<any> {
-        const todos = this.toDoManager.getToDoList();
+        const todos = this.toDoManager.getAllTasks();
         return { success: true, todos };
     }
 }
@@ -86,6 +85,6 @@ export const getTools = (toDoManager: ToDoManager): { [name: string]: Tool } => 
   writeFile: new WriteFileTool(),
   runShellCommand: new RunShellCommandTool(),
   addToDo: new AddToDoTool(toDoManager),
-  getToDoList: new GetToDoListTool(toDoManager),
+  getAllTasks: new GetAllTasksTool(toDoManager),
   updateTaskStatus: new UpdateTaskStatusTool(toDoManager),
 });

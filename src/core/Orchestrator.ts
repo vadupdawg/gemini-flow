@@ -114,7 +114,7 @@ export class Orchestrator {
       }
 
       const dependencies = currentTask.dependencies
-        .map(depId => this.toDoManager.getToDoList().find(t => t.id === depId))
+        .map(depId => this.toDoManager.getAllTasks().find(t => t.id === depId))
         .filter((t): t is ToDoItem => !!t);
       
       const taskWithContext = this.buildTaskWithContext(currentTask.task, dependencies);
