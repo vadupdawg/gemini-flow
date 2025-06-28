@@ -8,7 +8,7 @@ export const initCommand = () => {
     .description('Initialize a new Gemini Flow project')
     .action(() => {
       const geminiDir = path.join(process.cwd(), '.gemini');
-      const promptsDir = path.join(geminiDir, 'prompts');
+      const promptsDir = path.join(geminiDir, 'prompts', 'modes');
       const configFile = path.join(geminiDir, 'gemini-flow.json');
 
       if (fs.existsSync(geminiDir)) {
@@ -16,7 +16,6 @@ export const initCommand = () => {
         return;
       }
 
-      fs.mkdirSync(geminiDir, { recursive: true });
       fs.mkdirSync(promptsDir, { recursive: true });
 
       const defaultConfig = {
@@ -25,6 +24,13 @@ export const initCommand = () => {
       };
 
       fs.writeFileSync(configFile, JSON.stringify(defaultConfig, null, 2));
+
+      const templateDir = path.join(__dirname, '..', 'templates', 'prompts', 'modes');
+      fs.readdirSync(templateDir).forEach(file => {
+        const templatePath = path.join(templateDir, file);
+        const newPath = path.join(promptsDir, file);
+        fs.copyFileSync(templatePath, newPath);
+      });
 
       console.log('Gemini Flow project initialized successfully.');
     });

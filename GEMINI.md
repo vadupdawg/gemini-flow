@@ -11,6 +11,7 @@ Gemini Flow uses a multi-agent approach to solve complex software engineering ta
 - `gemini-flow init`: Initializes a new project.
 - `gemini-flow sparc "<prompt>"`: Runs a workflow with specialized agents.
   - `--parallel`: Executes agents concurrently.
+- `gemini-flow swarm "<prompt>"`: Runs a workflow with a swarm of agents.
 - `gemini-flow start`: Starts the web monitoring UI.
 
 ## SPARC Modes

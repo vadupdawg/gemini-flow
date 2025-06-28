@@ -6,7 +6,13 @@ export class Memory {
   private memoryPath: string;
 
   constructor() {
-    this.memoryPath = path.join(process.cwd(), '.gemini', 'memory.json');
+    const geminiDir = path.join(process.cwd(), '.gemini');
+    this.memoryPath = path.join(geminiDir, 'memory.json');
+
+    if (!fs.existsSync(geminiDir)) {
+      fs.mkdirSync(geminiDir, { recursive: true });
+    }
+
     if (!fs.existsSync(this.memoryPath)) {
       fs.writeFileSync(this.memoryPath, JSON.stringify({}));
     }
