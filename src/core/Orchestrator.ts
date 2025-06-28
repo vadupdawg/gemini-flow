@@ -33,18 +33,35 @@ export class Orchestrator {
     return this.agents[name];
   }
 
-  private getSystemPrompt(mode: string): string | undefined {
-    const promptPath = path.join(process.cwd(), '.gemini', 'prompts', 'modes', `${mode}.md`);
-    if (fs.existsSync(promptPath)) {
-      return fs.readFileSync(promptPath, 'utf-8');
+  private async getSystemPrompt(mode: string): Promise<string> {
+    const userPromptPath = path.join(process.cwd(), '.gemini', 'prompts', 'modes', `${mode}.md`);
+    if (fs.existsSync(userPromptPath)) {
+      return fs.readFileSync(userPromptPath, 'utf-8');
     }
-    // Also check the templates directory
+
     const templatePath = path.join(__dirname, '..', 'templates', 'prompts', 'modes', `${mode}.md`);
     if (fs.existsSync(templatePath)) {
       return fs.readFileSync(templatePath, 'utf-8');
     }
-    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found.`);
-    return undefined;
+
+    console.warn(`[Orchestrator] System prompt for mode '${mode}' not found. Generating a new one...`);
+
+    // The prompt for the prompt-engineer itself MUST exist.
+    const metaPromptPath = path.join(__dirname, '..', 'templates', 'prompts', 'modes', 'prompt-engineer.md');
+    if (!fs.existsSync(metaPromptPath)) {
+      console.error("[Orchestrator] CRITICAL: Meta prompt for 'prompt-engineer' not found. Cannot generate new prompts.");
+      return `You are a helpful assistant. Your role is '${mode}'.`; // Fallback
+    }
+    const metaPrompt = fs.readFileSync(metaPromptPath, 'utf-8');
+
+    const promptEngineer = new Agent('prompt-engineer', 'prompt-engineer', this.apiKey);
+    const newPrompt = await promptEngineer.run(`Create a system prompt for an agent with the role: '${mode}'`, metaPrompt);
+
+    // Save the newly generated prompt for future use
+    fs.writeFileSync(userPromptPath, newPrompt);
+    console.log(`[Orchestrator] New prompt for '${mode}' generated and saved to ${userPromptPath}`);
+
+    return newPrompt;
   }
 
   private buildTaskWithContext(task: string, inputKeys?: string | string[]): string {
@@ -72,7 +89,7 @@ export class Orchestrator {
       }
 
       const taskWithContext = this.buildTaskWithContext(step.task, step.inputKey);
-      const systemPrompt = this.getSystemPrompt(agent.mode);
+      const systemPrompt = await this.getSystemPrompt(agent.mode);
       const result = await agent.run(taskWithContext, systemPrompt);
 
       if (step.outputKey) {
