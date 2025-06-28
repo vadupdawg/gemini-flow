@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
-const commander_1 = require("commander");
+const yargs_1 = __importDefault(require("yargs"));
+const helpers_1 = require("yargs/helpers");
 const commands_1 = require("./commands");
-const program = new commander_1.Command();
-program
-    .name('gemini-flow')
-    .description('A multi-agent orchestration system for Gemini models.')
-    .version('0.0.1');
-// Register all commands
-for (const command of commands_1.commands) {
-    program.addCommand(command());
-}
-program.parse(process.argv);
+const cli = (0, yargs_1.default)((0, helpers_1.hideBin)(process.argv));
+cli
+    .command(commands_1.commands)
+    .demandCommand(1, 'You need at least one command before moving on')
+    .help()
+    .argv;

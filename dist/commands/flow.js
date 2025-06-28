@@ -43,15 +43,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.flowCommand = void 0;
-const commander_1 = require("commander");
 const Orchestrator_1 = require("../core/Orchestrator");
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-const flowCommand = () => {
-    const command = new commander_1.Command('flow')
-        .description('Run a dynamic, to-do based workflow')
-        .argument('<initialPrompt>', 'The initial prompt to start the flow')
-        .action((initialPrompt) => __awaiter(void 0, void 0, void 0, function* () {
+exports.flowCommand = {
+    command: 'flow <initialPrompt>',
+    describe: 'Run a dynamic, to-do based workflow',
+    builder: (yargs) => yargs.positional('initialPrompt', {
+        describe: 'The initial prompt to start the flow',
+        type: 'string',
+    }),
+    handler: (argv) => __awaiter(void 0, void 0, void 0, function* () {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             console.error('GEMINI_API_KEY not found in .env file.');
@@ -61,8 +63,6 @@ const flowCommand = () => {
         // Add a default agent for now
         orchestrator.addAgent('coder', 'coder');
         // Run the dynamic workflow
-        yield orchestrator.run(initialPrompt);
-    }));
-    return command;
+        yield orchestrator.run(argv.initialPrompt);
+    }),
 };
-exports.flowCommand = flowCommand;

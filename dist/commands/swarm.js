@@ -43,7 +43,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.swarmCommand = void 0;
-const commander_1 = require("commander");
 const Orchestrator_1 = require("../core/Orchestrator");
 const dotenv = __importStar(require("dotenv"));
 const Logger_1 = require("../core/Logger");
@@ -52,20 +51,24 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const ToDoManager_1 = require("../core/ToDoManager");
 dotenv.config();
-const swarmCommand = () => {
-    const command = new commander_1.Command('swarm')
-        .description('Run a swarm of agents to achieve a high-level goal')
-        .argument('<goal>', 'The high-level goal for the swarm')
-        .action((goal) => __awaiter(void 0, void 0, void 0, function* () {
+exports.swarmCommand = {
+    command: 'swarm <goal>',
+    describe: 'Run a swarm of agents to achieve a high-level goal',
+    builder: (yargs) => yargs.positional('goal', {
+        describe: 'The high-level goal for the swarm',
+        type: 'string',
+    }),
+    handler: (argv) => __awaiter(void 0, void 0, void 0, function* () {
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
             Logger_1.Logger.error('[Swarm]', 'GEMINI_API_KEY not found in .env file.');
             return;
         }
-        Logger_1.Logger.log('[Swarm]', `Goal received: "${goal}"`);
-        const orchestrator = new Orchestrator_1.Orchestrator(apiKey);
-        const executor = new executor_1.Executor();
+        Logger_1.Logger.log('[Swarm]', `Goal received: "${argv.goal}"`);
         const toDoManager = new ToDoManager_1.ToDoManager();
+        toDoManager.clear(); // Start with a clean slate
+        const orchestrator = new Orchestrator_1.Orchestrator(apiKey, toDoManager);
+        const executor = new executor_1.Executor();
         // Define all possible agents in the swarm
         const agents = [
             'swarm-coordinator', 'requirements_gatherer', 'architect', 'coder',
@@ -76,7 +79,7 @@ const swarmCommand = () => {
         }
         // Step 1: Use a swarm-coordinator to generate a plan
         Logger_1.Logger.log('[Swarm]', 'Initializing swarm-coordinator to generate a plan...');
-        const coordinatorPrompt = `Based on the following goal, create a detailed plan as a series of tasks. For each task, specify the most appropriate agent to perform it. The available agents are: ${agents.join(', ')}. The goal is: "${goal}"`;
+        const coordinatorPrompt = `Based on the following goal, create a detailed plan as a series of tasks. For each task, specify the most appropriate agent to perform it. The available agents are: ${agents.join(', ')}. The goal is: "${argv.goal}"`;
         const systemPromptPath = path.join(__dirname, '..', 'templates', 'prompts', 'modes', `swarm-coordinator.md`);
         const systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
         const planResult = yield executor.run({
@@ -105,12 +108,10 @@ const swarmCommand = () => {
             }
             // Step 3: Execute the plan
             Logger_1.Logger.log('[Swarm]', 'Starting orchestrator to execute the plan...');
-            yield orchestrator.run(`The plan has been generated and added to the to-do list. Start executing the first available task.`);
+            yield orchestrator.processQueue();
         }
         catch (e) {
             Logger_1.Logger.error('[Swarm]', `Failed to parse the generated plan. Error: ${e.message}. Raw output:\n${planResult.output}`);
         }
-    }));
-    return command;
+    }),
 };
-exports.swarmCommand = swarmCommand;

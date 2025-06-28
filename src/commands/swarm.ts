@@ -27,6 +27,8 @@ export const swarmCommand: CommandModule = {
     Logger.log('[Swarm]', `Goal received: "${argv.goal}"`);
 
     const toDoManager = new ToDoManager();
+    toDoManager.clear(); // Start with a clean slate
+
     const orchestrator = new Orchestrator(apiKey, toDoManager);
     const executor = new Executor();
 

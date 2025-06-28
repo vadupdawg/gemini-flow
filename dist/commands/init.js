@@ -34,14 +34,19 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.initCommand = void 0;
-const commander_1 = require("commander");
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const Logger_1 = require("../core/Logger");
-const initCommand = () => {
-    const command = new commander_1.Command('init')
-        .description('Initialize a new Gemini Flow project')
-        .action(() => {
+exports.initCommand = {
+    command: 'init',
+    describe: 'Initialize a new Gemini Flow project',
+    builder: {
+        sparc: {
+            describe: 'Initialize with SPARC development environment',
+            type: 'boolean',
+        },
+    },
+    handler: (argv) => {
         Logger_1.Logger.log('[Init]', 'Starting Gemini Flow initialization...');
         const geminiDir = path.join(process.cwd(), '.gemini');
         const promptsDir = path.join(geminiDir, 'prompts', 'modes');
@@ -70,8 +75,33 @@ const initCommand = () => {
             const newPath = path.join(promptsDir, file);
             fs.copyFileSync(templatePath, newPath);
         });
+        if (argv.sparc) {
+            const claudeDir = path.join(process.cwd(), '.claude');
+            const settingsFile = path.join(claudeDir, 'settings.json');
+            Logger_1.Logger.log('[Init]', `Creating .claude directory at: ${claudeDir}`);
+            fs.mkdirSync(claudeDir, { recursive: true });
+            const settings = {
+                "anthropic_api_key": "YOUR_ANTHROPIC_API_KEY",
+                "model": "claude-3-opus-20240229",
+                "max_tokens": 4096,
+                "temperature": 0,
+                "tool_config": {
+                    "tools": [
+                        { "name": "*" }
+                    ]
+                },
+                "bash_config": {
+                    "timeout": 300,
+                    "max_timeout": 600
+                },
+                "output_character_limit": 500000,
+                "parallel_tool_calls": true,
+                "batch_tool_calls": true,
+                "auto_save_to_memory": true
+            };
+            Logger_1.Logger.log('[Init]', `Writing settings file to: ${settingsFile}`);
+            fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+        }
         Logger_1.Logger.success('[Init]', 'Gemini Flow project initialized successfully.');
-    });
-    return command;
+    },
 };
-exports.initCommand = initCommand;

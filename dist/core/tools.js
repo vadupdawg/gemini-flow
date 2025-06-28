@@ -42,7 +42,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getTools = exports.UpdateTaskStatusTool = exports.GetToDoListTool = exports.AddToDoTool = exports.RunShellCommandTool = exports.WriteFileTool = void 0;
+exports.getTools = exports.UpdateTaskStatusTool = exports.GetAllTasksTool = exports.AddToDoTool = exports.RunShellCommandTool = exports.WriteFileTool = void 0;
 const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
@@ -103,20 +103,20 @@ class AddToDoTool {
     }
 }
 exports.AddToDoTool = AddToDoTool;
-class GetToDoListTool {
+class GetAllTasksTool {
     constructor(toDoManager) {
         this.toDoManager = toDoManager;
-        this.name = 'getToDoList';
+        this.name = 'getAllTasks';
         this.description = 'Gets the current to-do list.';
     }
     execute() {
         return __awaiter(this, void 0, void 0, function* () {
-            const todos = this.toDoManager.getToDoList();
+            const todos = this.toDoManager.getAllTasks();
             return { success: true, todos };
         });
     }
 }
-exports.GetToDoListTool = GetToDoListTool;
+exports.GetAllTasksTool = GetAllTasksTool;
 class UpdateTaskStatusTool {
     constructor(toDoManager) {
         this.toDoManager = toDoManager;
@@ -135,7 +135,7 @@ const getTools = (toDoManager) => ({
     writeFile: new WriteFileTool(),
     runShellCommand: new RunShellCommandTool(),
     addToDo: new AddToDoTool(toDoManager),
-    getToDoList: new GetToDoListTool(toDoManager),
+    getAllTasks: new GetAllTasksTool(toDoManager),
     updateTaskStatus: new UpdateTaskStatusTool(toDoManager),
 });
 exports.getTools = getTools;

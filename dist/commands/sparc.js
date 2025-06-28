@@ -43,42 +43,52 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sparcCommand = void 0;
-const commander_1 = require("commander");
-const Orchestrator_1 = require("../core/Orchestrator");
+const Logger_1 = require("../core/Logger");
+const executor_1 = require("../core/executor");
+const fs = __importStar(require("fs"));
+const path = __importStar(require("path"));
 const dotenv = __importStar(require("dotenv"));
 dotenv.config();
-const sparcCommand = () => {
-    const command = new commander_1.Command('sparc')
-        .description('Run a SPARC workflow')
-        .option('--parallel', 'Run agents in parallel')
-        .action((options) => __awaiter(void 0, void 0, void 0, function* () {
+exports.sparcCommand = {
+    command: 'sparc <command>',
+    describe: 'Run a SPARC command',
+    builder: (yargs) => yargs
+        .command('run <mode> <prompt>', 'Run a SPARC mode', {}, (argv) => __awaiter(void 0, void 0, void 0, function* () {
+        const { mode, prompt } = argv;
+        Logger_1.Logger.log('[SPARC]', `Running mode '${mode}' with prompt: '${prompt}'`);
         const apiKey = process.env.GEMINI_API_KEY;
         if (!apiKey) {
-            console.error('GEMINI_API_KEY not found in .env file.');
+            Logger_1.Logger.error('[SPARC]', 'GEMINI_API_KEY not found in .env file.');
             return;
         }
-        const orchestrator = new Orchestrator_1.Orchestrator(apiKey);
-        // Create agents
-        orchestrator.addAgent('architect', 'architect');
-        orchestrator.addAgent('coder', 'coder');
-        // Define a memory-driven workflow
-        const workflow = [
-            {
-                agent: 'architect',
-                task: 'Design a REST API for a simple e-commerce application. The output should be a JSON object representing the API design.',
-                outputKey: 'api_design'
-            },
-            {
-                agent: 'coder',
-                task: 'Based on the provided API design, implement the user endpoint in Node.js with Express.',
-                inputKey: 'api_design',
-                outputKey: 'user_endpoint_code'
-            },
-        ];
-        // Run the workflow
-        yield orchestrator.runWorkflow(workflow, options.parallel);
-        console.log("\nWorkflow finished. Check the memory for the results.");
-    }));
-    return command;
+        const systemPromptPath = path.join(process.cwd(), '.gemini', 'prompts', 'modes', `${mode}.md`);
+        if (!fs.existsSync(systemPromptPath)) {
+            Logger_1.Logger.error('[SPARC]', `Mode '${mode}' not found at ${systemPromptPath}`);
+            return;
+        }
+        const systemPrompt = fs.readFileSync(systemPromptPath, 'utf-8');
+        const executor = new executor_1.Executor();
+        const result = yield executor.run({
+            task: prompt,
+            systemPrompt,
+            apiKey,
+        });
+        if (result.success) {
+            Logger_1.Logger.log('[SPARC]', `Execution successful. Output:\n${result.output}`);
+        }
+        else {
+            Logger_1.Logger.error('[SPARC]', `Execution failed: ${result.error}`);
+        }
+    }))
+        .command('modes', 'List all available SPARC modes', {}, () => {
+        const modesDir = path.join(process.cwd(), '.gemini', 'prompts', 'modes');
+        if (!fs.existsSync(modesDir)) {
+            Logger_1.Logger.error('[SPARC]', 'Modes directory not found.');
+            return;
+        }
+        const modes = fs.readdirSync(modesDir).map(file => file.replace('.md', ''));
+        Logger_1.Logger.log('[SPARC]', 'Available modes:');
+        console.log(modes.join('\n'));
+    }),
+    handler: () => { },
 };
-exports.sparcCommand = sparcCommand;

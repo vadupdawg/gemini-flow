@@ -32,6 +32,13 @@ export class ToDoManager {
     fs.writeFileSync(this.todoFilePath, JSON.stringify(data, null, 2));
   }
 
+  clear() {
+    this.todos = [];
+    if (fs.existsSync(this.todoFilePath)) {
+      fs.unlinkSync(this.todoFilePath);
+    }
+  }
+
   getAllTasks(): ToDoItem[] {
     return this.todos;
   }

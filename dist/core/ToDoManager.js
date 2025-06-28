@@ -53,17 +53,27 @@ class ToDoManager {
         const data = { todos: this.todos };
         fs.writeFileSync(this.todoFilePath, JSON.stringify(data, null, 2));
     }
-    getToDoList() {
+    clear() {
+        this.todos = [];
+        if (fs.existsSync(this.todoFilePath)) {
+            fs.unlinkSync(this.todoFilePath);
+        }
+    }
+    getAllTasks() {
         return this.todos;
+    }
+    getTaskById(id) {
+        return this.todos.find(t => t.id === id);
     }
     addTask(task, agent, dependencies = []) {
         const newId = this.todos.length > 0 ? Math.max(...this.todos.map(t => t.id)) + 1 : 1;
+        const numericDependencies = dependencies.map(d => parseInt(d, 10));
         const newTask = {
             id: newId,
             task,
             agent,
             status: 'pending',
-            dependencies,
+            dependencies: numericDependencies,
         };
         this.todos.push(newTask);
         this.saveToDos();

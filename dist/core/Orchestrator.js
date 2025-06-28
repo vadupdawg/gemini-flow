@@ -51,7 +51,7 @@ const tools_1 = require("./tools");
 const Logger_1 = require("./Logger");
 const ToDoManager_1 = require("./ToDoManager");
 class Orchestrator {
-    constructor(apiKey) {
+    constructor(apiKey, toDoManager) {
         this.agents = {};
         this.executor = new executor_1.Executor();
         this.apiKey = apiKey;
@@ -59,7 +59,7 @@ class Orchestrator {
             input: process.stdin,
             output: process.stdout,
         });
-        this.toDoManager = new ToDoManager_1.ToDoManager();
+        this.toDoManager = toDoManager || new ToDoManager_1.ToDoManager();
         this.tools = (0, tools_1.getTools)(this.toDoManager);
     }
     confirmExecution(command) {
@@ -129,8 +129,12 @@ class Orchestrator {
     }
     run(initialPrompt_1) {
         return __awaiter(this, arguments, void 0, function* (initialPrompt, initialAgent = 'coder') {
-            // Initial task for the planner
             this.toDoManager.addTask(initialPrompt, initialAgent);
+            yield this.processQueue();
+        });
+    }
+    processQueue() {
+        return __awaiter(this, void 0, void 0, function* () {
             let nextTask = this.toDoManager.getNextTask();
             while (nextTask) {
                 const currentTask = nextTask;
@@ -144,7 +148,7 @@ class Orchestrator {
                     continue;
                 }
                 const dependencies = currentTask.dependencies
-                    .map(depId => this.toDoManager.getToDoList().find(t => t.id === depId))
+                    .map(depId => this.toDoManager.getTaskById(depId))
                     .filter((t) => !!t);
                 const taskWithContext = this.buildTaskWithContext(currentTask.task, dependencies);
                 const systemPrompt = this.getSystemPrompt(agent.mode);
@@ -167,8 +171,6 @@ class Orchestrator {
                         yield this.executeTool(result.tool, result.args, agentName);
                     }
                     else {
-                        // If the agent doesn't use a tool, we assume it has completed the task
-                        // and the content is the result.
                         this.toDoManager.updateTaskStatus(currentTask.id, 'completed', result.content);
                         Logger_1.Logger.success(`[Agent: ${agentName}]`, `Completed task #${currentTask.id}.`);
                     }

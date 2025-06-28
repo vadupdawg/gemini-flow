@@ -7,6 +7,7 @@ import { sparcCommand } from './sparc';
 import { agentCommand } from './agent';
 import { batchtoolCommand } from './batchtool';
 import { taskCommand } from './task';
+import { chatCommand } from './chat';
 
 export const commands = [
   initCommand,
@@ -18,4 +19,5 @@ export const commands = [
   agentCommand,
   batchtoolCommand,
   taskCommand,
+  chatCommand,
 ];
