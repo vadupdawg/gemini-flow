@@ -1,21 +1,18 @@
 #!/usr/bin/env node
+
 import { Command } from 'commander';
-import { initCommand } from './commands/init';
-import { sparcCommand } from './commands/sparc';
-import { startCommand } from './commands/start';
-import { memoryCommand } from './commands/memory';
-import { swarmCommand } from './commands/swarm';
+import { commands } from './commands';
 
 const program = new Command();
 
 program
-  .version('1.0.0')
-  .description('Gemini Flow: AI Agent Orchestration Platform');
+  .name('gemini-flow')
+  .description('A multi-agent orchestration system for Gemini models.')
+  .version('0.0.1');
 
-program.addCommand(initCommand());
-program.addCommand(sparcCommand());
-program.addCommand(startCommand());
-program.addCommand(memoryCommand());
-program.addCommand(swarmCommand());
+// Register all commands
+for (const command of commands) {
+    program.addCommand(command());
+}
 
 program.parse(process.argv);
