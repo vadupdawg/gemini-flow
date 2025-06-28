@@ -255,7 +255,17 @@ program
         // Parse and execute plan
         try {
           let plan;
-          const output = planResult.output;
+          let output = planResult.output;
+          
+          // If output is a JSON string with a content field, extract it first
+          try {
+            const outerJson = JSON.parse(output);
+            if (outerJson.content) {
+              output = outerJson.content;
+            }
+          } catch (e) {
+            // Not outer JSON, continue with original output
+          }
           
           // More robust JSON extraction
           let jsonString: string | null = null;
@@ -337,6 +347,15 @@ program
           if (options.monitor) {
             Logger.log('[Swarm Debug]', 'Raw output from coordinator:');
             console.log(planResult.output.substring(0, 500) + '...');
+            try {
+              const parsed = JSON.parse(planResult.output);
+              if (parsed.content) {
+                Logger.log('[Swarm Debug]', 'Extracted content:');
+                console.log(parsed.content.substring(0, 500) + '...');
+              }
+            } catch (e) {
+              // Ignore if not JSON
+            }
           }
         }
       } else {
