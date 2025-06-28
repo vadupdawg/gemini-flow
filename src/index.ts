@@ -257,11 +257,44 @@ program
           let plan;
           const output = planResult.output;
           
-          // Try to extract JSON from output
-          const jsonMatch = output.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            plan = JSON.parse(jsonMatch[0]);
+          // More robust JSON extraction
+          let jsonString: string | null = null;
+          
+          // First try to extract from markdown code blocks
+          const markdownMatch = output.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (markdownMatch && markdownMatch[1]) {
+            jsonString = markdownMatch[1].trim();
           } else {
+            // Try to find JSON array
+            const arrayMatch = output.match(/\[[\s\S]*?\]/);
+            if (arrayMatch) {
+              jsonString = arrayMatch[0];
+            } else {
+              // Try to find JSON object that might contain the plan
+              const objectMatch = output.match(/\{[\s\S]*?\}/);
+              if (objectMatch) {
+                const tempObj = JSON.parse(objectMatch[0]);
+                if (tempObj.plan && Array.isArray(tempObj.plan)) {
+                  plan = tempObj.plan;
+                } else if (tempObj.tasks && Array.isArray(tempObj.tasks)) {
+                  plan = tempObj.tasks;
+                }
+              }
+            }
+          }
+          
+          if (jsonString && !plan) {
+            // Clean up common JSON issues
+            jsonString = jsonString
+              .replace(/^\s*[\[\{]/, match => match.trim()) // Clean start
+              .replace(/[\]\}]\s*$/, match => match.trim()) // Clean end
+              .replace(/,\s*([}\]])/, '$1'); // Remove trailing commas
+            
+            plan = JSON.parse(jsonString);
+          }
+          
+          if (!plan || !Array.isArray(plan)) {
+            Logger.warn('[Swarm]', 'Could not parse plan from AI output, using fallback');
             // Fallback to simple task creation
             plan = agents.map(agent => ({
               task: `${agent}: Work on ${objective}`,
@@ -301,6 +334,10 @@ program
           
         } catch (e) {
           Logger.error('[Swarm]', `Failed to parse plan: ${(e as Error).message}`);
+          if (options.monitor) {
+            Logger.log('[Swarm Debug]', 'Raw output from coordinator:');
+            console.log(planResult.output.substring(0, 500) + '...');
+          }
         }
       } else {
         Logger.error('[Swarm]', `Failed to create plan: ${planResult.error}`);
