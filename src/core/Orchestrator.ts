@@ -96,9 +96,11 @@ export class Orchestrator {
   }
 
   async run(initialPrompt: string, initialAgent: string = 'coder') {
-    // Initial task for the planner
     this.toDoManager.addTask(initialPrompt, initialAgent);
+    await this.processQueue();
+  }
 
+  async processQueue() {
     let nextTask = this.toDoManager.getNextTask();
     while (nextTask) {
       const currentTask = nextTask;
@@ -114,7 +116,7 @@ export class Orchestrator {
       }
 
       const dependencies = currentTask.dependencies
-        .map(depId => this.toDoManager.getAllTasks().find(t => t.id === depId))
+        .map(depId => this.toDoManager.getTaskById(depId))
         .filter((t): t is ToDoItem => !!t);
       
       const taskWithContext = this.buildTaskWithContext(currentTask.task, dependencies);
@@ -141,8 +143,6 @@ export class Orchestrator {
         if (result.tool) {
           await this.executeTool(result.tool, result.args, agentName);
         } else {
-            // If the agent doesn't use a tool, we assume it has completed the task
-            // and the content is the result.
             this.toDoManager.updateTaskStatus(currentTask.id, 'completed', result.content);
             Logger.success(`[Agent: ${agentName}]`, `Completed task #${currentTask.id}.`);
         }
