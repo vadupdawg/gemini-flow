@@ -29,6 +29,9 @@ export class WorkerPool extends EventEmitter {
   private workerIdCounter = 0;
   private options: WorkerPoolOptions;
   private terminated = false;
+  private workerErrorCount = 0;
+  private lastErrorTime = 0;
+  private workerCreationDisabled = false;
 
   constructor(options: WorkerPoolOptions) {
     super();
@@ -54,32 +57,42 @@ export class WorkerPool extends EventEmitter {
    * Create a new worker
    */
   private createWorker(): void {
-    const workerId = this.workerIdCounter++;
-    const worker = new Worker(this.options.workerScript!, {
-      workerData: { workerId }
-    });
+    if (this.workerCreationDisabled) {
+      return; // Don't create workers if disabled
+    }
+    
+    try {
+      const workerId = this.workerIdCounter++;
+      const worker = new Worker(this.options.workerScript!, {
+        workerData: { workerId }
+      });
 
-    const workerInfo: WorkerInfo = {
-      id: workerId,
-      worker,
-      busy: false
-    };
+      const workerInfo: WorkerInfo = {
+        id: workerId,
+        worker,
+        busy: false
+      };
 
-    // Setup worker event handlers
-    worker.on('message', (message) => {
-      this.handleWorkerMessage(workerId, message);
-    });
+      // Setup worker event handlers
+      worker.on('message', (message) => {
+        this.handleWorkerMessage(workerId, message);
+      });
 
-    worker.on('error', (error) => {
-      this.handleWorkerError(workerId, error);
-    });
+      worker.on('error', (error) => {
+        this.handleWorkerError(workerId, error);
+      });
 
-    worker.on('exit', (code) => {
-      this.handleWorkerExit(workerId, code);
-    });
+      worker.on('exit', (code) => {
+        this.handleWorkerExit(workerId, code);
+      });
 
-    this.workers.set(workerId, workerInfo);
-    Logger.log(`[WorkerPool]`, `Created worker ${workerId}`);
+      this.workers.set(workerId, workerInfo);
+      Logger.log(`[WorkerPool]`, `Created worker ${workerId}`);
+    } catch (error: any) {
+      Logger.error(`[WorkerPool]`, `Failed to create worker: ${error.message}`);
+      this.workerCreationDisabled = true;
+      this.emit('poolError', new Error(`Cannot create workers: ${error.message}`));
+    }
   }
 
   /**
@@ -219,6 +232,21 @@ export class WorkerPool extends EventEmitter {
   private handleWorkerError(workerId: number, error: Error): void {
     Logger.error(`[WorkerPool]`, `Worker ${workerId} error: ${error.message}`);
     
+    // Circuit breaker: prevent spam of worker creation on repeated errors
+    const now = Date.now();
+    if (now - this.lastErrorTime < 1000) { // Errors within 1 second
+      this.workerErrorCount++;
+      if (this.workerErrorCount > 5) {
+        Logger.error(`[WorkerPool]`, `Too many worker errors. Disabling worker creation.`);
+        this.workerCreationDisabled = true;
+        this.emit('poolError', new Error('Worker pool disabled due to repeated errors'));
+        return;
+      }
+    } else {
+      this.workerErrorCount = 1;
+    }
+    this.lastErrorTime = now;
+    
     const worker = this.workers.get(workerId);
     if (worker?.currentTask) {
       this.emit('taskError', {
@@ -229,8 +257,8 @@ export class WorkerPool extends EventEmitter {
     
     this.emit('workerError', error);
     
-    // Replace the worker
-    if (!this.terminated) {
+    // Replace the worker only if not disabled
+    if (!this.terminated && !this.workerCreationDisabled) {
       this.terminateWorker(workerId);
       this.createWorker();
     }

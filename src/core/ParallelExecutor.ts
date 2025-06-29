@@ -86,6 +86,13 @@ export class ParallelExecutor extends EventEmitter {
     this.workerPool.on('workerError', (error) => {
       Logger.error('[ParallelExecutor]', `Worker error: ${error.message}`);
     });
+    
+    this.workerPool.on('poolError', (error) => {
+      Logger.error('[ParallelExecutor]', `Worker pool disabled: ${error.message}`);
+      ui.warning('⚠️ Parallel execution disabled due to worker errors. Falling back to sequential mode.');
+      this.isRunning = false;
+      this.emit('fallbackToSequential', error);
+    });
 
     // Monitor performance
     if (this.options.enableMonitoring) {

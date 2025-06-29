@@ -49,13 +49,19 @@ export class AutonomousAgent {
     this.apiKey = apiKey;
     this.memory = new Memory();
     this.toDoManager = new ToDoManager();
-    this.orchestrator = new Orchestrator(apiKey, this.toDoManager, enableParallel);
-    this.executor = new Executor();
-    this.parallelExecutionEnabled = enableParallel;
     
-    if (enableParallel) {
+    // Check environment variable to disable parallel execution
+    const forceDisableParallel = process.env.DISABLE_PARALLEL_EXECUTION === 'true';
+    const actualEnableParallel = forceDisableParallel ? false : enableParallel;
+    
+    this.orchestrator = new Orchestrator(apiKey, this.toDoManager, actualEnableParallel);
+    this.executor = new Executor();
+    this.parallelExecutionEnabled = actualEnableParallel;
+    
+    if (actualEnableParallel) {
+      const maxWorkers = parseInt(process.env.MAX_PARALLEL_WORKERS || '') || this.maxParallelWorkers;
       this.parallelExecutor = new ParallelExecutor({
-        maxWorkers: this.maxParallelWorkers,
+        maxWorkers,
         enableMonitoring: true,
         taskTimeout: 600000 // 10 minutes
       });

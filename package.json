@@ -12,7 +12,7 @@
   "scripts": {
     "test": "jest",
     "start": "ts-node src/index.ts",
-    "build": "tsc && cpx \"src/templates/**/*\" \"dist/templates\"",
+    "build": "tsc && cpx \"src/templates/**/*\" \"dist/templates\" && cpx \"src/**/*.js\" \"dist\"",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

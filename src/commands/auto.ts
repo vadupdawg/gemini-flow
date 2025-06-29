@@ -12,7 +12,7 @@ export function createAutoCommand(): Command {
   auto
     .description('Execute any complex objective autonomously')
     .argument('<objective>', 'What you want to accomplish')
-    .option('--parallel', 'Enable parallel execution (default: true)')
+    .option('--parallel', 'Enable parallel execution (default: true, unless DISABLE_PARALLEL_EXECUTION=true)')
     .option('--max-agents <number>', 'Maximum parallel agents', '5')
     .option('--learn', 'Enable learning mode (default: true)')
     .option('--monitor', 'Show real-time monitoring')
@@ -34,13 +34,18 @@ export function createAutoCommand(): Command {
       console.log();
       
       // Configuration
+      const forceDisableParallel = process.env.DISABLE_PARALLEL_EXECUTION === 'true';
       const config = {
-        parallel: options.parallel !== false,
+        parallel: forceDisableParallel ? false : (options.parallel !== false),
         maxAgents: parseInt(options.maxAgents || '5'),
         learning: options.learn !== false,
         monitoring: options.monitor || false,
         dryRun: options.dryRun || false
       };
+      
+      if (forceDisableParallel) {
+        ui.warning('ℹ️ Parallel execution disabled by environment variable');
+      }
       
       ui.section('Configuration');
       ui.log(`🔄 Parallel Execution: ${config.parallel ? 'Enabled' : 'Disabled'}`);
