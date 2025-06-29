@@ -20,6 +20,7 @@ Gemini Flow is an experimental port of Claude Flow's concepts to work with Googl
 - **Persistent Memory System**: Store and retrieve context across sessions
 - **Task Management**: Track and manage complex workflows with dependencies
 - **Real-time Monitoring**: Monitor agent activities and system status
+- **MCP Integration**: Connect with Claude Code to leverage Gemini's 1M token context window
 - **Extensible Architecture**: Easy to add new commands, modes, and capabilities
 
 ## 📋 Prerequisites
@@ -159,6 +160,28 @@ Store and retrieve information across sessions:
 # Import memory from file
 ./gemini-flow memory import backup.json
 ```
+
+### MCP Integration with Claude Code
+
+Bridge Gemini's 1M token context window with Claude Code:
+
+```bash
+# Start MCP server to expose Gemini capabilities
+./gemini-flow mcp start
+
+# Connect to Claude Code
+./gemini-flow mcp connect
+
+# Collaborative analysis (Gemini + Claude)
+./gemini-flow mcp collaborate "Analyze this large codebase" --directory ./src
+
+# The workflow:
+# 1. Gemini processes full context (up to 1M tokens)
+# 2. Claude refines the analysis
+# 3. Get combined insights from both models
+```
+
+See [MCP Integration Guide](docs/MCP_INTEGRATION.md) for detailed setup.
 
 ### Agent Management
 

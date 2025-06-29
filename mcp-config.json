@@ -1,0 +1,48 @@
+{
+  "name": "gemini-flow",
+  "description": "Gemini Flow MCP Server - Access to 1M token context window",
+  "version": "1.0.0",
+  "mcpServers": {
+    "gemini-flow": {
+      "command": "npx",
+      "args": ["gemini-flow", "mcp", "start"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "analyze_large_context",
+      "description": "Analyze documents up to 1M tokens using Gemini",
+      "category": "analysis"
+    },
+    {
+      "name": "process_codebase",
+      "description": "Process entire codebases with full context understanding",
+      "category": "development"
+    },
+    {
+      "name": "autonomous_execute",
+      "description": "Execute complex tasks autonomously with Gemini Flow agents",
+      "category": "automation"
+    },
+    {
+      "name": "semantic_memory_search",
+      "description": "Search through persistent semantic memory",
+      "category": "memory"
+    },
+    {
+      "name": "store_in_memory",
+      "description": "Store data persistently across sessions",
+      "category": "memory"
+    }
+  ],
+  "capabilities": {
+    "maxTokens": 1000000,
+    "parallelExecution": true,
+    "autonomousAgents": true,
+    "persistentMemory": true,
+    "semanticSearch": true
+  }
+}

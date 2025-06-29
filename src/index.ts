@@ -10,6 +10,7 @@ import { ToDoManager } from './core/ToDoManager';
 import { InteractiveMode } from './core/InteractiveMode';
 import { addParallelCommands } from './cli/parallel-commands';
 import { createAutoCommand } from './commands/auto';
+import { createMCPCommand } from './commands/mcp';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -674,6 +675,9 @@ addParallelCommands(program);
 
 // Add autonomous execution command
 program.addCommand(createAutoCommand());
+
+// Add MCP (Model Context Protocol) command
+program.addCommand(createMCPCommand());
 
 // Check if we should enter interactive mode
 async function main() {
