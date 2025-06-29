@@ -1,6 +1,11 @@
 #!/bin/bash
 # Gemini Flow Quick Launcher
 
+# Check if we want chat mode (default if no args)
+if [[ $# -eq 0 ]] || [[ "$1" == "chat" ]] || [[ "$1" == "c" ]]; then
+    exec node "$(dirname "$0")/gemini-chat.js"
+fi
+
 # Check if we want to use simple mode
 if [[ "$1" == "simple" ]] || [[ "$1" == "s" ]]; then
     shift

@@ -1,5 +1,34 @@
 # 🚀 Gemini Flow Quick Start
 
+## 🎯 NEW: Interactive Chat Mode!
+
+Start an ongoing conversation with Gemini, just like Claude Code:
+
+```bash
+# Start chat mode (3 ways):
+./gf              # No arguments = chat mode
+./gf chat         # Explicit chat command
+./gf c            # Short version
+
+# Or directly:
+node gemini-chat.js
+```
+
+**Chat Features:**
+- 💬 Continuous conversation (doesn't exit after each response)
+- 📜 Conversation history (persists between sessions)
+- 🎨 Formatted output with syntax highlighting
+- 💾 Auto-save every 5 messages
+- 🔄 Reset conversation anytime
+
+**Chat Commands:**
+- `help` - Show available commands
+- `clear` - Clear screen (keeps history)
+- `reset` - Start fresh conversation
+- `history` - View conversation history
+- `save` - Save current session
+- `exit` - Exit chat mode
+
 ## ✅ Working Commands
 
 ### 1. Simple Task Execution (Recommended)
