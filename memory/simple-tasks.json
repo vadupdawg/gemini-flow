@@ -1,0 +1,7 @@
+[
+  {
+    "task": "Create a hello world function",
+    "response": "**Step 1: Choose a language.**  This solution will use Python, but the concept is the same for other languages.\n\n**Step 2: Write the function.**\n\n```python\ndef hello_world():\n  \"\"\"Prints 'Hello, world!' to the console.\"\"\"\n  print(\"Hello, world!\")\n```\n\n**Step 3: Test the function.**\n\n```python\nhello_world() # This will print \"Hello, world!\" to your console.\n```\n\nThat's it. You've created a \"Hello, world!\" function.  To use it in a larger program, simply call `hello_world()` where you want the message to appear.\n",
+    "timestamp": "2025-06-29T08:25:48.457Z"
+  }
+]
