@@ -13,12 +13,16 @@ if [[ "$1" == "simple" ]] || [[ "$1" == "s" ]]; then
     exit 0
 fi
 
-# Check for auto command issues
-if [[ "$1" == "auto" ]]; then
-    echo "⚠️  The auto command has JSON parsing issues. Using simple mode instead..."
+# Check for enhanced auto command
+if [[ "$1" == "auto" ]] || [[ "$1" == "a" ]]; then
     shift
-    node "$(dirname "$0")/gemini-simple.js" "$@"
-    exit 0
+    exec node "$(dirname "$0")/gemini-auto.js" "$@"
+fi
+
+# Check for enhanced swarm command
+if [[ "$1" == "swarm" ]] || [[ "$1" == "sw" ]]; then
+    shift
+    exec node "$(dirname "$0")/gemini-swarm.js" "$@"
 fi
 
 # Otherwise use the full gemini-flow

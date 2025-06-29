@@ -29,6 +29,61 @@ node gemini-chat.js
 - `save` - Save current session
 - `exit` - Exit chat mode
 
+## 🐝 NEW: Enhanced Swarm Mode!
+
+Multi-agent orchestration with individual todo lists and report aggregation:
+
+```bash
+# Basic swarm command
+./gf swarm "Build a complete web application"
+
+# With options
+./gf swarm "Research AI frameworks" --max-agents 8 --strategy research --parallel --monitor
+
+# Short version
+./gf sw "Create REST API" --max-agents 5
+```
+
+**Swarm Features:**
+- 🤖 Each agent gets individual todo lists from orchestrator
+- 📊 Automatic report collection and aggregation
+- 🎨 Creative synthesis of agent work
+- 🔄 Dynamic task generation based on reports
+- 🧠 Critical and creative thinking built-in
+
+**Swarm Options:**
+- `--max-agents <n>` - Set maximum number of agents (default: 5)
+- `--strategy <type>` - research, development, analysis, testing, optimization, maintenance
+- `--mode <type>` - centralized, distributed, hierarchical, mesh, hybrid
+- `--parallel` - Execute agents in parallel
+- `--monitor` - Show real-time progress
+
+## 🤖 NEW: Enhanced Auto Mode!
+
+Autonomous task execution with iterative refinement:
+
+```bash
+# Basic auto command
+./gf auto "Create a user authentication system"
+
+# With options
+./gf auto "Optimize database performance" --max-agents 4 --interactive
+
+# Short version
+./gf a "Write unit tests"
+```
+
+**Auto Features:**
+- 🔄 Iterative execution with up to 5 cycles
+- 📝 Dynamic master todo list management
+- 👥 Automatic agent spawning and task distribution
+- 🧪 Critical analysis at each iteration
+- 🎨 Creative problem-solving between cycles
+
+**Auto Options:**
+- `--max-agents <n>` - Agents per iteration (default: 3)
+- `--interactive` - Ask for confirmation between iterations
+
 ## ✅ Working Commands
 
 ### 1. Simple Task Execution (Recommended)
