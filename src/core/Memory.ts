@@ -14,7 +14,7 @@ interface MemoryEntry {
 }
 
 export class Memory {
-  private memoryDir: string;
+  protected memoryDir: string;
   private dataPath: string;
 
   constructor() {
@@ -72,6 +72,12 @@ export class Memory {
     const entries = this.getAllEntries();
     const entry = entries.find(e => e.key === key);
     return entry ? entry.value : undefined;
+  }
+
+  delete(key: string): void {
+    const entries = this.getAllEntries();
+    const filteredEntries = entries.filter(e => e.key !== key);
+    fs.writeFileSync(this.dataPath, JSON.stringify(filteredEntries, null, 2));
   }
 
   getAll(): any {
@@ -175,5 +181,46 @@ export class Memory {
         fs.unlinkSync(path.join(backupDir, file));
       });
     }
+  }
+  
+  // Export memory state
+  async exportMemory(filePath: string) {
+    const entries = this.getAllEntries();
+    const smartEntries: any[] = []; // Empty for now, can be implemented later
+    const indexStats = { // Basic stats for now
+      totalIndexed: entries.length,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    const exportData = {
+      version: '2.0',
+      timestamp: new Date().toISOString(),
+      entries,
+      smartEntries,
+      indexStats,
+      metadata: {
+        totalEntries: entries.length,
+        totalSize: JSON.stringify(entries).length,
+        exportedBy: 'enhanced-memory-system'
+      }
+    };
+    
+    fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2));
+  }
+  
+  // Import memory state
+  async importMemory(filePath: string) {
+    const importData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+    
+    if (importData.version !== '2.0') {
+      throw new Error('Incompatible memory export version');
+    }
+    
+    // Import entries
+    for (const entry of importData.entries) {
+      await this.set(entry.key, entry.value, entry.metadata);
+    }
+    
+    console.log(`Imported ${importData.entries.length} memory entries`);
   }
 }

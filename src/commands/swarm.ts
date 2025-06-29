@@ -104,7 +104,7 @@ export const swarmCommand: CommandModule = {
 
       // Step 3: Execute the plan
       Logger.log('[Swarm]', 'Starting orchestrator to execute the plan...');
-      await orchestrator.processQueue();
+      await orchestrator.processQueueSequential();
 
     } catch (e) {
       Logger.error('[Swarm]', `Failed to parse the generated plan. Error: ${(e as Error).message}. Raw output:\n${planResult.output}`);

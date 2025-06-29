@@ -1,5 +1,6 @@
 import { Agent } from './Agent';
 import { Executor } from './executor';
+import { ParallelExecutor, ParallelTask } from './ParallelExecutor';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
@@ -12,12 +13,15 @@ import { InteractiveMode } from './InteractiveMode';
 export class Orchestrator {
   private agents: { [name: string]: { mode: string } } = {};
   private executor = new Executor();
+  private parallelExecutor?: ParallelExecutor;
   private apiKey: string;
   private rl: readline.Interface;
   private toDoManager: ToDoManager;
   private tools: { [name: string]: Tool };
+  private parallelMode: boolean = false;
+  private maxParallelTasks: number = 4;
 
-  constructor(apiKey: string, toDoManager?: ToDoManager) {
+  constructor(apiKey: string, toDoManager?: ToDoManager, parallelMode: boolean = false) {
     this.apiKey = apiKey;
     this.rl = readline.createInterface({
       input: process.stdin,
@@ -25,6 +29,14 @@ export class Orchestrator {
     });
     this.toDoManager = toDoManager || new ToDoManager();
     this.tools = getTools(this.toDoManager);
+    this.parallelMode = parallelMode;
+    
+    if (parallelMode) {
+      this.parallelExecutor = new ParallelExecutor({
+        maxWorkers: this.maxParallelTasks,
+        enableMonitoring: true
+      });
+    }
   }
 
   private async confirmExecution(command: string): Promise<boolean> {
@@ -99,10 +111,15 @@ export class Orchestrator {
 
   async run(initialPrompt: string, initialAgent: string = 'coder') {
     this.toDoManager.addTask(initialPrompt, initialAgent);
-    await this.processQueue();
+    
+    if (this.parallelMode) {
+      await this.processQueueParallel();
+    } else {
+      await this.processQueueSequential();
+    }
   }
 
-  async processQueue() {
+  async processQueueSequential() {
     // Show initial task overview
     const allTasks = this.toDoManager.getAllTasks();
     if (allTasks.length > 0) {
@@ -171,6 +188,143 @@ export class Orchestrator {
     // Only close rl if not in interactive mode
     if (!InteractiveMode.isActive()) {
       this.rl.close();
+    }
+  }
+
+  /**
+   * Process tasks in parallel mode
+   */
+  async processQueueParallel() {
+    // Show initial task overview
+    const allTasks = this.toDoManager.getAllTasks();
+    if (allTasks.length > 0) {
+      ui.showTaskList(allTasks);
+    }
+    
+    // Start parallel executor
+    if (!this.parallelExecutor) {
+      throw new Error('Parallel executor not initialized');
+    }
+    this.parallelExecutor.start();
+    
+    // Get all pending tasks
+    const pendingTasks = allTasks.filter(task => task.status === 'pending');
+    
+    // Convert tasks to parallel tasks
+    const parallelTasks: ParallelTask[] = pendingTasks.map(task => ({
+      id: task.id.toString(),
+      type: 'gemini',
+      priority: this.getTaskPriority(task),
+      dependencies: task.dependencies.map(d => d.toString()),
+      data: {
+        apiKey: this.apiKey,
+        prompt: this.buildTaskWithContext(task.task, this.getTaskDependencies(task)),
+        systemPrompt: this.getSystemPrompt(this.agents[task.agent]?.mode || 'coder'),
+        agent: task.agent,
+        taskData: task
+      }
+    }));
+    
+    // Submit all tasks
+    for (const pTask of parallelTasks) {
+      this.toDoManager.updateTaskStatus(parseInt(pTask.id), 'in_progress');
+      
+      try {
+        const result = await this.parallelExecutor!.submitTask(pTask);
+        await this.handleParallelTaskResult(pTask, result);
+      } catch (error) {
+        ui.agentError(pTask.data.agent, `Task failed: ${(error as Error).message}`);
+        this.toDoManager.updateTaskStatus(parseInt(pTask.id), 'failed', (error as Error).message);
+      }
+    }
+    
+    // Wait for all tasks to complete
+    await this.parallelExecutor!.waitForCompletion();
+    
+    ui.success('All tasks have been completed! 🎉');
+    ui.cleanup();
+    
+    // Stop parallel executor
+    await this.parallelExecutor!.stop();
+    
+    // Only close rl if not in interactive mode
+    if (!InteractiveMode.isActive()) {
+      this.rl.close();
+    }
+  }
+
+  /**
+   * Get task priority based on dependencies and type
+   */
+  private getTaskPriority(task: ToDoItem): number {
+    // Tasks with no dependencies have highest priority
+    if (task.dependencies.length === 0) return 10;
+    
+    // Tasks with fewer dependencies have higher priority
+    return Math.max(1, 10 - task.dependencies.length);
+  }
+
+  /**
+   * Get task dependencies as ToDoItems
+   */
+  private getTaskDependencies(task: ToDoItem): ToDoItem[] {
+    return task.dependencies
+      .map(depId => this.toDoManager.getTaskById(depId))
+      .filter((t): t is ToDoItem => !!t);
+  }
+
+  /**
+   * Handle result from parallel task execution
+   */
+  private async handleParallelTaskResult(task: ParallelTask, result: any): Promise<void> {
+    const taskId = parseInt(task.id);
+    const agentName = task.data.agent;
+    
+    try {
+      const parsedResult = JSON.parse(result);
+      if (parsedResult.tool) {
+        ui.agentInfo(agentName, `Using tool: ${parsedResult.tool}`);
+        await this.executeTool(parsedResult.tool, parsedResult.args, agentName);
+      } else {
+        this.toDoManager.updateTaskStatus(taskId, 'completed', parsedResult.content);
+        ui.agentSuccess(agentName, `Completed task #${taskId}`);
+      }
+    } catch (e) {
+      // Try to extract meaningful content from non-JSON response
+      ui.agentSuccess(agentName, `Completed task #${taskId}`);
+      this.toDoManager.updateTaskStatus(taskId, 'completed', result);
+    }
+  }
+
+  /**
+   * Enable or disable parallel mode
+   */
+  public setParallelMode(enabled: boolean): void {
+    this.parallelMode = enabled;
+    
+    if (enabled && !this.parallelExecutor) {
+      this.parallelExecutor = new ParallelExecutor({
+        maxWorkers: this.maxParallelTasks,
+        enableMonitoring: true
+      });
+    }
+    
+    if (this.parallelExecutor) {
+      this.parallelExecutor.setParallelMode(enabled);
+    }
+  }
+
+  /**
+   * Set maximum parallel tasks
+   */
+  public setMaxParallelTasks(max: number): void {
+    this.maxParallelTasks = max;
+    
+    if (this.parallelExecutor) {
+      this.parallelExecutor = new ParallelExecutor({
+        maxWorkers: max,
+        enableMonitoring: true
+      });
     }
   }
 }

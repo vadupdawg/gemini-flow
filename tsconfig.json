@@ -11,6 +11,11 @@
   },
   "include": [
     "src/**/*"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*-example.ts",
+    "src/examples/**/*"
   ]
 }
 

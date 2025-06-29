@@ -8,6 +8,8 @@ import { Executor } from './core/executor';
 import { Orchestrator } from './core/Orchestrator';
 import { ToDoManager } from './core/ToDoManager';
 import { InteractiveMode } from './core/InteractiveMode';
+import { addParallelCommands } from './cli/parallel-commands';
+import { createAutoCommand } from './commands/auto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -23,7 +25,8 @@ program
   .name('gemini-flow')
   .description('Gemini Flow: AI Agent Orchestration Platform')
   .version('2.0.0')
-  .option('-i, --interactive', 'Start in interactive mode');
+  .option('-i, --interactive', 'Start in interactive mode')
+  .exitOverride();
 
 // Initialize project command
 program
@@ -223,6 +226,11 @@ program
         // TODO: Implement real-time monitoring
       }
 
+      // Enable parallel mode for swarm if requested
+      if (options.parallel) {
+        orchestrator.setParallelMode(true);
+      }
+      
       // Create a plan using swarm-coordinator
       ui.agentStart('coordinator', 'Creating execution plan...');
       const coordinator = new Executor();
@@ -332,13 +340,13 @@ program
             toDoManager.addTask(task.task, task.agent, task.dependencies);
           });
           
-          // Execute based on mode
-          if (options.parallel && options.mode === 'distributed') {
-            ui.info('⚡ Executing tasks in parallel (distributed mode)');
-            // TODO: Implement parallel execution
+          // Execute tasks
+          if (options.parallel) {
+            ui.info('⚡ Executing tasks in parallel mode');
+            await orchestrator.run(objective);
           } else {
             ui.info('▶ Executing tasks sequentially');
-            await orchestrator.processQueue();
+            await orchestrator.run(objective);
           }
           
           // Store results in memory
@@ -660,6 +668,12 @@ program
         console.log(`  - Memory Directory: ${path.join(process.cwd(), 'memory')}`);
       })
   );
+
+// Add parallel execution commands
+addParallelCommands(program);
+
+// Add autonomous execution command
+program.addCommand(createAutoCommand());
 
 // Check if we should enter interactive mode
 async function main() {

@@ -64,18 +64,37 @@ export class InteractiveMode {
         
         // Store original argv
         const originalArgv = process.argv;
+        const originalExit = process.exit;
         
-        // Set up argv for commander
-        process.argv = [process.argv[0], process.argv[1], ...args];
+        // Override process.exit temporarily
+        let exitCalled = false;
+        (process as any).exit = (code?: number) => {
+          exitCalled = true;
+        };
         
-        // Parse with commander - but don't exit on completion
-        await this.program.parseAsync(process.argv);
+        try {
+          // Set up argv for commander
+          process.argv = [process.argv[0], process.argv[1], ...args];
+          
+          // Parse with commander
+          await this.program.parseAsync(process.argv);
+        } finally {
+          // Always restore
+          process.argv = originalArgv;
+          process.exit = originalExit;
+        }
         
-        // Restore original argv
-        process.argv = originalArgv;
-        
-      } catch (error) {
-        ui.error(`Error: ${(error as Error).message}`);
+      } catch (error: any) {
+        // Handle commander errors gracefully
+        if (error.code === 'commander.unknownCommand') {
+          ui.error(`Unknown command. Type 'help' for available commands.`);
+        } else if (error.code === 'commander.help') {
+          // Help was displayed, this is fine
+        } else if (error.code === 'commander.version') {
+          // Version was displayed, this is fine
+        } else {
+          ui.error(`Error: ${error.message || error}`);
+        }
       }
       
       // Show prompt again
