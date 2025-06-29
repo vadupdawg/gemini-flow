@@ -89,18 +89,21 @@ class SwarmOrchestrator {
     console.log(chalk.blue('\n🔍 Phase 1: Critical Analysis\n'));
     
     const analysisPrompt = `
-You are a critical thinking orchestrator. Analyze this objective with deep scrutiny:
+You are a critical thinking orchestrator analyzing a COMPLEX objective that requires multiple agents.
 
 Objective: ${this.objective}
+Strategy: ${this.strategy}
+
+IMPORTANT: This is a complex task requiring multiple specialized agents working together.
 
 Provide a critical analysis covering:
-1. Core Requirements - What must be achieved
-2. Potential Challenges - What could go wrong
-3. Success Criteria - How to measure completion
-4. Resource Needs - What agents and skills are required
-5. Risk Factors - What to watch out for
+1. Major Components - Break down into distinct parts (e.g., backend, frontend, database, APIs, UI, testing)
+2. Technical Requirements - What technologies, frameworks, and tools are needed
+3. Feature Breakdown - List each feature as a separate item
+4. Agent Specializations - What types of expert agents are needed (e.g., Backend Dev, Frontend Dev, Database Expert, etc.)
+5. Dependencies and Integration Points - How different parts connect
 
-Be thorough and skeptical. Question assumptions.`;
+Think like a technical project manager breaking down a large project into sprints and tasks.`;
 
     const result = await this.model.generateContent(analysisPrompt);
     const analysis = result.response.text();
@@ -116,25 +119,35 @@ Be thorough and skeptical. Question assumptions.`;
     console.log(chalk.blue('\n📝 Phase 2: Creating Todo Lists\n'));
     
     const todoPrompt = `
-Based on this analysis, create specific todo lists for different agent types.
+Based on this analysis, create DETAILED todo lists for ${this.maxAgents} SPECIALIZED agents.
 
 Objective: ${this.objective}
 Analysis: ${this.analysis}
 Strategy: ${this.strategy}
-Max Agents: ${this.maxAgents}
 
-Create todo lists for up to ${this.maxAgents} agents. Each agent should have:
-- A specific role (e.g., researcher, developer, tester, reviewer)
-- 3-5 concrete tasks
-- Clear deliverables
-- Dependencies on other agents if needed
+IMPORTANT INSTRUCTIONS:
+1. Create ${this.maxAgents} agents with SPECIFIC technical roles (not generic)
+2. Each agent should have 4-8 concrete, actionable tasks
+3. Tasks should be specific enough to implement (not vague)
+4. Include different types of work: design, implementation, testing, documentation
+
+Example of good agent specialization:
+- Backend API Developer (handles server routes, controllers, middleware)
+- Database Engineer (schema design, queries, optimization)
+- Frontend UI Developer (components, layouts, user interactions)
+- Testing Engineer (unit tests, integration tests, test data)
+- DevOps Engineer (deployment, CI/CD, monitoring)
+- Security Specialist (authentication, authorization, data protection)
 
 Format each agent section clearly with:
-AGENT: [role]
+AGENT: [specific technical role]
 TASKS:
-- Task 1 (deliverable: ...)
-- Task 2 (deliverable: ...)
-etc.`;
+- Task 1 (deliverable: concrete output)
+- Task 2 (deliverable: specific implementation)
+- Task 3 (deliverable: measurable result)
+etc.
+
+Make sure tasks are distributed based on technical expertise, not randomly.`;
 
     const result = await this.model.generateContent(todoPrompt);
     const todoPlan = result.response.text();

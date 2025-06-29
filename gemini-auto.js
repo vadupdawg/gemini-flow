@@ -107,20 +107,22 @@ class AutoOrchestrator {
     console.log(chalk.cyan('🔍 Analyzing current state...\n'));
     
     const statePrompt = `
-Analyze the current state of this task with critical thinking:
+You are an AI orchestrator analyzing a complex task that MUST be broken down into multiple sub-tasks.
 
 Task: ${this.task}
 Iteration: ${this.iterations}
 Previous Reports: ${this.reports.length > 0 ? this.reports.map(r => r.summary).join('\n') : 'None yet'}
 
+IMPORTANT: This task is TOO COMPLEX for a single agent. You MUST decompose it into multiple specialized sub-tasks.
+
 Provide critical analysis:
-1. What has been accomplished so far?
-2. What remains to be done?
-3. What obstacles or challenges exist?
-4. What resources or approaches might help?
+1. What major components need to be built? (e.g., backend API, frontend UI, database, authentication)
+2. What technical decisions need to be made? (e.g., tech stack, architecture, frameworks)
+3. What features are required? (list each feature separately)
+4. What obstacles or challenges exist?
 5. Is the current approach working?
 
-Be honest and critical. Identify gaps and problems.`;
+Think like a project manager - identify ALL the different pieces that need to be built separately.`;
 
     const result = await this.model.generateContent(statePrompt);
     const analysis = result.response.text();
@@ -135,21 +137,37 @@ Be honest and critical. Identify gaps and problems.`;
     console.log(chalk.cyan('\n📝 Updating master todo list...\n'));
     
     const todoPrompt = `
-Based on this analysis, create or update the master todo list.
+Based on this analysis, create a DETAILED master todo list with MANY specific sub-tasks.
 
 Task: ${this.task}
 Analysis: ${analysis}
 Current Todos: ${this.masterTodos.map(t => `${t.task} (${t.status})`).join('\n') || 'None'}
 
-Create a comprehensive todo list that will accomplish the task.
+IMPORTANT RULES:
+1. Create AT LEAST 10-15 specific todos for a complex task
+2. Each todo should be a concrete, actionable item that one agent can complete
+3. Break down high-level features into multiple smaller tasks
+4. Include tasks for: planning, implementation, testing, documentation
+5. Think like you're creating a project board with many cards
+
+Examples of good task decomposition:
+- Instead of "Create user system", break it into:
+  - Design user database schema
+  - Implement user registration endpoint
+  - Create login authentication logic
+  - Build password reset functionality
+  - Add user profile management
+  - Write unit tests for user operations
+  - Create API documentation for user endpoints
+
 For each todo item, include:
-- Clear description
+- Clear, specific description
 - Priority (high/medium/low)
 - Estimated complexity (simple/moderate/complex)
 - Dependencies (if any)
 
 Format:
-TODO: [description]
+TODO: [specific description]
 PRIORITY: [level]
 COMPLEXITY: [level]
 DEPENDS: [other todo or none]`;
@@ -237,11 +255,20 @@ Distribute these todos among ${this.maxAgents} specialized agents:
 Todos:
 ${pendingTodos.map(t => `- ${t.task} [${t.priority}/${t.complexity}]`).join('\n')}
 
-For each agent, specify:
-AGENT: [role/specialty]
-TODOS: [list of todo tasks they should handle]
+IMPORTANT: Create specialized agents with clear roles:
+- Backend Developer: APIs, database, server logic
+- Frontend Developer: UI components, user interactions
+- Database Architect: Schema design, queries, optimization
+- Testing Engineer: Unit tests, integration tests
+- DevOps Engineer: Deployment, configuration, infrastructure
+- Security Expert: Authentication, authorization, data protection
+- etc.
 
-Distribute based on task similarity and agent expertise.`;
+For each agent, specify:
+AGENT: [specific role/specialty]
+TODOS: [list of todo tasks that match their expertise]
+
+Each agent should get 2-5 related tasks. Distribute based on expertise.`;
 
     const result = await this.model.generateContent(distributionPrompt);
     const distribution = result.response.text();
